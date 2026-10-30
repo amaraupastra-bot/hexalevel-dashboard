@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+env/
+analysis_output.txt
+clean_inspection.txt
+.DS_Store
+Thumbs.db

@@ -1,0 +1,2540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HEXALEVEL — Financial Management & Revenue Distribution Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Premium Modern Typography: Inter + Outfit -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js for interactive graphs -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --primary-teal: #0d5c52;
+      --primary-dark: #073831;
+      --teal-light: #e6f3f1;
+      --border-gray: #cbd5e1;
+      --text-dark: #0f172a;
+      --text-muted: #475569;
+      --bg-page: #f8fafc;
+      --sidebar-bg: #0d5c52;
+      --card-white: #ffffff;
+      
+      /* Exact Soft Pastel KPI Colors from User's Excel Screenshots */
+      --tile-blue: #e0f2fe;      /* Total Revenue */
+      --tile-indigo: #e0e7ff;    /* Company Share */
+      --tile-lime: #fef9c3;      /* Team Share */
+      --tile-pink: #ffe4e6;      /* Purchases */
+      --tile-purple: #f3e8ff;    /* Projects Count */
+      --tile-mint: #d1fae5;      /* Received */
+      --tile-orange: #ffedd5;    /* Send Money */
+      --tile-net: #e6f9ed;       /* Net Profit */
+    }
+
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    body { background: var(--bg-page); color: var(--text-dark); min-height: 100vh; display: flex; font-size: 13.5px; }
+
+    h1, h2, h3, .brand-title, .excel-header-banner, .kpi-box-val, .p-card-header {
+      font-family: 'Outfit', 'Inter', sans-serif;
+    }
+
+    /* ============================================================== */
+    /* LOGIN SCREEN OVERLAY                                           */
+    /* ============================================================== */
+    .login-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: radial-gradient(circle at 50% 30%, #0f443c 0%, #072621 100%);
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .login-box {
+      background: #ffffff;
+      width: 100%;
+      max-width: 440px;
+      border-radius: 12px;
+      padding: 32px 30px;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .login-logo {
+      text-align: center;
+      margin-bottom: 22px;
+    }
+    .login-logo h2 {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--primary-teal);
+      letter-spacing: 0.5px;
+    }
+    .login-logo p {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+    .login-form .form-group {
+      margin-bottom: 14px;
+    }
+    .login-form .form-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #334155;
+      margin-bottom: 5px;
+      display: block;
+    }
+    .login-form .form-control {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 13.5px;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+    .login-form .form-control:focus {
+      border-color: var(--primary-teal);
+      box-shadow: 0 0 0 3px rgba(13,92,82,0.15);
+    }
+    .btn-login {
+      width: 100%;
+      background: var(--primary-teal);
+      color: #ffffff;
+      padding: 11px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      margin-top: 8px;
+      transition: all 0.2s ease;
+    }
+    .btn-login:hover { background: #093c35; }
+    .quick-login-pills {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid #e2e8f0;
+      text-align: center;
+    }
+    .quick-pill {
+      display: inline-block;
+      background: #f1f5f9;
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 11.5px;
+      font-weight: 700;
+      margin: 3px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .quick-pill:hover { background: var(--primary-teal); color: #fff; border-color: var(--primary-teal); }
+
+    /* ============================================================== */
+    /* LEFT SIDEBAR NAVIGATION                                       */
+    /* ============================================================== */
+    .sidebar {
+      width: 275px;
+      min-width: 275px;
+      background: var(--sidebar-bg);
+      color: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 0;
+      box-shadow: 2px 0 12px rgba(0,0,0,0.12);
+      z-index: 100;
+    }
+    .sidebar-brand {
+      padding: 24px 20px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.15);
+    }
+    .brand-title {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-subtitle {
+      font-size: 11px;
+      color: #a7f3d0;
+      font-weight: 600;
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .sidebar-menu {
+      list-style: none;
+      padding: 18px 12px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      overflow-y: auto;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 14px;
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-decoration: none;
+    }
+    .nav-item:hover {
+      background: rgba(255,255,255,0.12);
+      color: #ffffff;
+      transform: translateX(2px);
+    }
+    .nav-item.active {
+      background: #ffffff;
+      color: var(--primary-dark);
+      font-weight: 800;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    }
+    .nav-item .icon { font-size: 17px; }
+
+    .sidebar-actions {
+      padding: 16px 14px 24px;
+      border-top: 1px solid rgba(255,255,255,0.15);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 9px 15px;
+      border-radius: 6px;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: none;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    .btn-green { background: #10b981; color: #ffffff; }
+    .btn-green:hover { background: #059669; }
+    .btn-blue { background: #2563eb; color: #ffffff; }
+    .btn-blue:hover { background: #1d4ed8; }
+    .btn-amber { background: #f59e0b; color: #ffffff; }
+    .btn-amber:hover { background: #d97706; }
+    .btn-light { background: rgba(255,255,255,0.15); color: #ffffff; border: 1px solid rgba(255,255,255,0.25); }
+    .btn-light:hover { background: rgba(255,255,255,0.25); }
+    
+    .btn-edit { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 5px 9px; font-size: 11.5px; border-radius: 5px; font-weight: 700; }
+    .btn-edit:hover { background: #2563eb; color: #ffffff; }
+    .btn-delete { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; padding: 5px 9px; font-size: 11.5px; border-radius: 5px; font-weight: 700; }
+    .btn-delete:hover { background: #ef4444; color: #ffffff; }
+
+    /* ============================================================== */
+    /* MAIN CONTENT AREA                                             */
+    /* ============================================================== */
+    .main-content {
+      flex: 1;
+      padding: 22px 30px 60px;
+      overflow-y: auto;
+    }
+
+    /* Top Bar with User Session & Title */
+    .top-header {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 13px 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 22px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .top-header h1 {
+      font-size: 19px;
+      font-weight: 800;
+      color: var(--primary-dark);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .user-session-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #f8fafc;
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+    }
+    .user-badge-current {
+      background: var(--primary-teal);
+      color: #ffffff;
+      padding: 4px 10px;
+      border-radius: 5px;
+      font-size: 12.5px;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn-logout {
+      background: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #fca5a5;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-logout:hover { background: #ef4444; color: #fff; }
+
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; animation: fadeIn 0.15s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* Green Headers matching user screenshots */
+    .excel-header-banner {
+      background: var(--primary-teal);
+      color: #ffffff;
+      text-align: center;
+      padding: 12px 18px;
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+      border-radius: 6px 6px 0 0;
+    }
+    .excel-sub-banner {
+      background: var(--primary-teal);
+      color: #d1fae5;
+      text-align: center;
+      padding: 4px 16px 8px;
+      font-size: 12px;
+      font-style: italic;
+      margin-bottom: 16px;
+      border-radius: 0 0 6px 6px;
+    }
+
+    /* KPI Grid matching Image 1 */
+    .kpi-row-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 1200px) {
+      .kpi-row-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .kpi-box {
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      text-align: center;
+      overflow: hidden;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+    .kpi-box-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #475569;
+      padding: 7px 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+    .kpi-box-val {
+      font-size: 21px;
+      font-weight: 800;
+      padding: 11px 12px;
+      color: #0f172a;
+      letter-spacing: -0.3px;
+    }
+
+    .bg-blue { background: var(--tile-blue); }
+    .bg-indigo { background: var(--tile-indigo); }
+    .bg-lime { background: var(--tile-lime); }
+    .bg-pink { background: var(--tile-pink); }
+    .bg-net { background: var(--tile-net); }
+    .bg-purple { background: var(--tile-purple); }
+    .bg-mint { background: var(--tile-mint); }
+    .bg-orange { background: var(--tile-orange); }
+
+    /* Tables */
+    .table-container {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .table-responsive {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      text-align: left;
+    }
+    th {
+      background: var(--primary-teal);
+      color: #ffffff;
+      padding: 10px 12px;
+      font-weight: 700;
+      border: 1px solid #073831;
+      white-space: nowrap;
+      letter-spacing: 0.2px;
+    }
+    td {
+      padding: 9px 12px;
+      border: 1px solid #e2e8f0;
+      color: #1e293b;
+      white-space: nowrap;
+    }
+    tr:nth-child(even) td { background: #f8fafc; }
+    tr:hover td { background: #f0fdf4; }
+    .tr-total td {
+      background: var(--primary-teal) !important;
+      color: #ffffff !important;
+      font-weight: 800;
+      font-size: 13.5px;
+    }
+
+    /* Badges */
+    .badge-received { color: #065f46; font-weight: 700; }
+    .badge-pending { color: #b45309; font-weight: 700; }
+    .badge-skip { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; font-weight: 800; padding: 2px 7px; border-radius: 4px; }
+    .badge-active { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
+    .tag-upper { background: #e0e7ff; color: #3730a3; padding: 3px 7px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+    .tag-lower { background: #fef3c7; color: #92400e; padding: 3px 7px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+
+    /* Graph Card Container */
+    .chart-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 1000px) {
+      .chart-grid { grid-template-columns: 1fr; }
+    }
+    .chart-card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .chart-card-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--primary-dark);
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #f1f5f9;
+      padding-bottom: 8px;
+    }
+
+    /* Member & Company Statement Cards */
+    .partner-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 950px) {
+      .partner-cards-grid { grid-template-columns: 1fr; }
+    }
+    .p-card {
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #ffffff;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+    }
+    .p-card-header {
+      background: var(--primary-teal);
+      color: #ffffff;
+      padding: 13px 18px;
+      font-size: 17px;
+      font-weight: 800;
+      display: flex;
+      justify-content: space-between;
+    }
+    .p-card-body { padding: 16px 18px; }
+    .p-card-row { display: flex; justify-content: space-between; font-size: 13.5px; padding: 7px 0; border-bottom: 1px solid #f1f5f9; }
+    .p-card-row .val { font-weight: 700; color: #0f172a; }
+    .p-card-total {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 2px solid var(--primary-teal);
+      display: flex;
+      justify-content: space-between;
+      font-size: 15.5px;
+      font-weight: 800;
+      color: #065f46;
+    }
+
+    /* Modals */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(15, 23, 42, 0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(3px);
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-content {
+      background: #ffffff;
+      border-radius: 10px;
+      width: 100%;
+      max-width: 620px;
+      box-shadow: 0 25px 35px -5px rgba(0,0,0,0.3);
+      overflow: hidden;
+      border: 1px solid #cbd5e1;
+    }
+    .modal-header {
+      background: var(--primary-teal);
+      color: #ffffff;
+      padding: 15px 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 16px;
+      font-weight: 800;
+    }
+    .modal-body { padding: 22px 24px; max-height: 80vh; overflow-y: auto; }
+    .form-group { margin-bottom: 14px; }
+    .form-label { display: block; font-size: 12.5px; font-weight: 700; margin-bottom: 5px; color: #334155; }
+    .form-control { 
+      width: 100%; 
+      padding: 10px 14px; 
+      border: 1.5px solid #cbd5e1; 
+      border-radius: 6px; 
+      font-size: 13.5px;
+      color: #0f172a;
+      transition: all 0.2s ease;
+      background: #ffffff;
+    }
+    .form-control:focus {
+      border-color: var(--primary-teal);
+      box-shadow: 0 0 0 3px rgba(13, 92, 82, 0.15);
+      outline: none;
+    }
+    select.form-control { cursor: pointer; }
+    optgroup { font-weight: 800; color: #0f172a; background: #f1f5f9; padding: 6px 0; }
+    option { font-weight: 500; color: #1e293b; background: #ffffff; padding: 8px 12px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .destination-indicator {
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+      padding: 10px 14px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #166534;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .modal-footer {
+      background: #f8fafc;
+      padding: 14px 24px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      border-top: 1px solid #e2e8f0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ============================================================== -->
+  <!-- LOGIN SCREEN OVERLAY                                           -->
+  <!-- ============================================================== -->
+  <div id="loginScreen" class="login-overlay">
+    <div class="login-box">
+      <div class="login-logo">
+        <h2>🏛️ HEXALEVEL</h2>
+        <p>Sign in with your email & password to access the dashboard</p>
+      </div>
+
+      <form id="loginForm" class="login-form" onsubmit="handleLoginSubmit(event)">
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="text" id="loginEmail" class="form-control" required placeholder="e.g. amara@hexalevel.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="loginPass" class="form-control" required placeholder="••••••••">
+        </div>
+
+        <button type="submit" class="btn-login">Sign In to Dashboard</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- LEFT SIDEBAR                                                   -->
+  <!-- ============================================================== -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-title">
+        <span>🏛️</span> HEXALEVEL
+      </div>
+      <div class="brand-subtitle">Financial Management Dashboard</div>
+    </div>
+
+    <ul class="sidebar-menu">
+      <li>
+        <a class="nav-item active" onclick="showTab('dashboard')">
+          <span class="icon">📊</span>
+          <span>Dashboard Overview</span>
+        </a>
+      </li>
+      <li>
+        <a class="nav-item" onclick="showTab('projects')">
+          <span class="icon">📁</span>
+          <span>Client Projects</span>
+        </a>
+      </li>
+      <li>
+        <a class="nav-item" onclick="showTab('revenuesplit')">
+          <span class="icon">💰</span>
+          <span>Revenue Split</span>
+        </a>
+      </li>
+      <li>
+        <a class="nav-item" onclick="showTab('expenses')">
+          <span class="icon">🛒</span>
+          <span>Purchases & Expenses</span>
+        </a>
+      </li>
+      <li>
+        <a class="nav-item" onclick="showTab('sendmoney')">
+          <span class="icon">💸</span>
+          <span>Send Money</span>
+        </a>
+      </li>
+      <li>
+        <a class="nav-item" onclick="showTab('scenarioc')">
+          <span class="icon">🔀</span>
+          <span>Scenario C (Skip Rule)</span>
+        </a>
+      </li>
+      <li>
+        <a class="nav-item" onclick="showTab('memberprofit')">
+          <span class="icon">👥</span>
+          <span>Financial Statements</span>
+        </a>
+      </li>
+      <li>
+        <a class="nav-item" onclick="showTab('activity')">
+          <span class="icon">🕒</span>
+          <span>Activity & Audit Trail</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="sidebar-actions">
+      <button class="btn btn-green" onclick="openProjectModal('add')">
+        <span>+</span> Add New Project
+      </button>
+      <button class="btn btn-light" onclick="openExpenseModal('add')">
+        <span>+</span> Add Purchase / Expense
+      </button>
+      <button class="btn btn-light" onclick="openSendMoneyModal('add')">
+        <span>+</span> Add Send Money
+      </button>
+      <a href="/download-excel" class="btn btn-blue" style="margin-top: 4px;">
+        <span>📥</span> Download Excel (.xlsx)
+      </a>
+    </div>
+  </aside>
+
+  <!-- ============================================================== -->
+  <!-- MAIN WORKSPACE                                                 -->
+  <!-- ============================================================== -->
+  <main class="main-content">
+
+    <!-- Top Header Bar with Clean User Indicator -->
+    <div class="top-header">
+      <h1 id="pageTitle">📊 Dashboard Overview</h1>
+      <div class="user-session-bar">
+        <span style="font-size:12px; font-weight:700; color:#475569;">Logged in as:</span>
+        <span id="currentUserName" class="user-badge-current">👤 Amara</span>
+        <button class="btn-logout" onclick="logoutUser()">Logout</button>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- TAB 1: DASHBOARD (Exact Replica of User's Image 1 + Graphs)  -->
+    <!-- ============================================================ -->
+    <div id="tab-dashboard" class="tab-pane active">
+      <div class="excel-header-banner">HEXALEVEL — MONTHLY REVENUE DASHBOARD</div>
+      <div class="excel-sub-banner">All values update automatically — add rows to Projects / Revenue Split / Expenses</div>
+
+      <!-- OLD MODEL SECTION (Row 5 - 9 of Image 1) -->
+      <div class="kpi-row-grid">
+        <div class="kpi-box bg-blue">
+          <div class="kpi-box-title">TOTAL REVENUE (PKR)</div>
+          <div class="kpi-box-val" id="dOldRev">0.00</div>
+        </div>
+        <div class="kpi-box bg-indigo">
+          <div class="kpi-box-title">COMPANY SHARE (50%)</div>
+          <div class="kpi-box-val" id="dOldCo">0.00</div>
+        </div>
+        <div class="kpi-box bg-lime">
+          <div class="kpi-box-title">TEAM SHARE (50%)</div>
+          <div class="kpi-box-val" id="dOldTeam">0.00</div>
+        </div>
+        <div class="kpi-box bg-pink">
+          <div class="kpi-box-title">TOTAL PURCHASES</div>
+          <div class="kpi-box-val" id="dOldPurchases">0.00</div>
+        </div>
+      </div>
+
+      <div class="kpi-row-grid" style="margin-bottom: 24px;">
+        <div class="kpi-box bg-net">
+          <div class="kpi-box-title">NET PROFIT</div>
+          <div class="kpi-box-val" id="dOldNet" style="color: #065f46;">0.00</div>
+        </div>
+        <div class="kpi-box bg-purple">
+          <div class="kpi-box-title">TOTAL PROJECTS</div>
+          <div class="kpi-box-val" id="dOldProjects">0</div>
+        </div>
+        <div class="kpi-box bg-mint">
+          <div class="kpi-box-title">PAYMENTS RECEIVED</div>
+          <div class="kpi-box-val" id="dOldReceived">0</div>
+        </div>
+        <div class="kpi-box bg-orange">
+          <div class="kpi-box-title">SEND MONEY TOTAL</div>
+          <div class="kpi-box-val" id="dOldSend">0.00</div>
+        </div>
+      </div>
+
+      <!-- NEW MODEL SECTION (Row 11 - 17 of Image 1) -->
+      <div class="excel-header-banner" style="font-size: 14px; background: #073831;">
+        NEW SPLIT — FROM 1 SEP 2026 (Company 30% · Shaista / Amara / Urooj 23.33% each)
+      </div>
+
+      <div class="kpi-row-grid" style="margin-top: 14px;">
+        <div class="kpi-box bg-blue">
+          <div class="kpi-box-title">TOTAL REVENUE (PKR)</div>
+          <div class="kpi-box-val" id="dNewRev">0.00</div>
+        </div>
+        <div class="kpi-box bg-indigo">
+          <div class="kpi-box-title">COMPANY SHARE (Total)</div>
+          <div class="kpi-box-val" id="dNewCo">0.00</div>
+        </div>
+        <div class="kpi-box bg-lime">
+          <div class="kpi-box-title">TEAM SHARE (Total)</div>
+          <div class="kpi-box-val" id="dNewTeam">0.00</div>
+        </div>
+        <div class="kpi-box bg-pink">
+          <div class="kpi-box-title">TOTAL PURCHASES</div>
+          <div class="kpi-box-val" id="dNewPurchases">0.00</div>
+        </div>
+      </div>
+
+      <div class="kpi-row-grid" style="margin-bottom: 24px;">
+        <div class="kpi-box bg-net">
+          <div class="kpi-box-title">NET PROFIT</div>
+          <div class="kpi-box-val" id="dNewNet" style="color: #065f46;">0.00</div>
+        </div>
+        <div class="kpi-box bg-purple">
+          <div class="kpi-box-title">TOTAL PROJECTS</div>
+          <div class="kpi-box-val" id="dNewProjects">0</div>
+        </div>
+        <div class="kpi-box bg-mint">
+          <div class="kpi-box-title">PAYMENTS RECEIVED</div>
+          <div class="kpi-box-val" id="dNewReceived">0</div>
+        </div>
+        <div class="kpi-box bg-orange">
+          <div class="kpi-box-title">SEND MONEY TOTAL</div>
+          <div class="kpi-box-val" id="dNewSend">0.00</div>
+        </div>
+      </div>
+
+      <!-- OVERALL SUMMARY (Row 19 - 22 of Image 1) -->
+      <div class="excel-header-banner" style="font-size: 14px; background: #073831;">
+        OVERALL SUMMARY (Old + New Combined)
+      </div>
+
+      <div class="kpi-row-grid" style="margin-top: 14px; margin-bottom: 24px;">
+        <div class="kpi-box bg-blue">
+          <div class="kpi-box-title">OVERALL REVENUE (PKR)</div>
+          <div class="kpi-box-val" id="dAllRev">0.00</div>
+        </div>
+        <div class="kpi-box bg-net">
+          <div class="kpi-box-title">OVERALL NET PROFIT</div>
+          <div class="kpi-box-val" id="dAllNet" style="color: #065f46;">0.00</div>
+        </div>
+        <div class="kpi-box bg-purple">
+          <div class="kpi-box-title">TOTAL PROJECTS</div>
+          <div class="kpi-box-val" id="dAllProjects">0</div>
+        </div>
+        <div class="kpi-box bg-mint">
+          <div class="kpi-box-title">PAYMENTS RECEIVED</div>
+          <div class="kpi-box-val" id="dAllReceived">0</div>
+        </div>
+      </div>
+
+      <!-- DASHBOARD CHARTS SECTION -->
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-card-title">
+            <span>Overall Capital Distribution</span>
+            <span style="font-size:11px; font-weight:600; color:#64748b;">Company vs Team vs Expenses</span>
+          </div>
+          <div style="height: 240px; display: flex; align-items: center; justify-content: center;">
+            <canvas id="chartRevenuePie"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-card-title">
+            <span>Old Model vs New Model Comparison</span>
+            <span style="font-size:11px; font-weight:600; color:#64748b;">50/50 Split vs 30/70 Split</span>
+          </div>
+          <div style="height: 240px;">
+            <canvas id="chartModelComparison"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- TAB 2: PROJECTS (Client Projects Tracker with Auto-Sync)    -->
+    <!-- ============================================================ -->
+    <div id="tab-projects" class="tab-pane">
+      <div class="excel-header-banner">HEXALEVEL — CLIENT PROJECTS TRACKER</div>
+      
+      <div style="display:flex; justify-content:space-between; align-items:center; margin: 14px 0 12px;">
+        <div style="font-size:13px; color:#166534; font-weight:700; background:#f0fdf4; padding:7px 14px; border-radius:6px; border:1px solid #86efac;">
+          ⚡ <strong>Auto-Sync Active:</strong> Every project added or modified here instantly updates <strong>Revenue Split</strong> and <strong>Scenario C</strong>.
+        </div>
+        <button class="btn btn-green" onclick="openProjectModal('add')">+ Add New Project</button>
+      </div>
+
+      <div class="table-container">
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Project Start</th>
+                <th>Client Name</th>
+                <th>Project Name</th>
+                <th>Service Type</th>
+                <th style="text-align: right;">Amount</th>
+                <th>Currency</th>
+                <th>Payment Status</th>
+                <th>Payment Date</th>
+                <th>Notes</th>
+                <th>Bank</th>
+                <th style="text-align: center;">Target Model</th>
+                <th style="text-align: center;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="projectsTrackerBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- TAB 3: REVENUE SPLIT (50/50 Upper Table & 30/70 Lower Table) -->
+    <!-- ============================================================ -->
+    <div id="tab-revenuesplit" class="tab-pane">
+      <!-- Upper Section: Old Split -->
+      <div class="excel-header-banner">
+        UPPER TABLE: REVENUE SPLIT (Old Model, before 1 Sep 2026) | 50% Company · 50% Team
+      </div>
+      <div class="table-container">
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th style="text-align: right;">Amount (PKR)</th>
+                <th style="text-align: right;">Company 50%</th>
+                <th style="text-align: right;">Team 50%</th>
+                <th>Status</th>
+                <th>Date Received</th>
+                <th>Shaista Account</th>
+                <th>Amara Account</th>
+                <th>Tax on Transfer</th>
+              </tr>
+            </thead>
+            <tbody id="revenueSplitOldBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Lower Section: New Split -->
+      <div class="excel-header-banner" style="margin-top: 24px;">
+        LOWER TABLE: REVENUE SPLIT (New Model, effective 1 Sep 2026) | Company 30% / 53.33% · Shaista 23.33% · Amara 23.33% · Urooj 23.33%
+      </div>
+      <div class="table-container">
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th style="text-align: right;">Amount (PKR)</th>
+                <th style="text-align: right;">Company 30% / 53.33%</th>
+                <th style="text-align: right;">Shaista 23.33%</th>
+                <th style="text-align: right;">Amara 23.33%</th>
+                <th style="text-align: right;">Urooj 23.33%</th>
+                <th>Status</th>
+                <th>Date Received</th>
+                <th>Shaista</th>
+                <th>Amara</th>
+                <th>Urooj</th>
+                <th>Tax</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody id="revenueSplitNewBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- TAB 4: EXPENSES (Upper & Lower Tables with Edit & Delete)   -->
+    <!-- ============================================================ -->
+    <div id="tab-expenses" class="tab-pane">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+        <span style="font-size:14px; font-weight:700; color:var(--primary-dark);">Company Purchases & Tool Subscriptions</span>
+        <button class="btn btn-amber" onclick="openExpenseModal('add')">+ Add Purchase / Expense</button>
+      </div>
+
+      <!-- Upper Table -->
+      <div class="excel-header-banner">
+        UPPER TABLE: PURCHASES — Items & Prices (Before 1 Sep 2026)
+      </div>
+      <div class="table-container">
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Item / Purchase</th>
+                <th>Name / Link</th>
+                <th style="text-align: right;">Price (PKR)</th>
+                <th style="text-align: center; width: 140px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="expensesOldBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Lower Table -->
+      <div class="excel-header-banner" style="margin-top: 24px;">
+        LOWER TABLE: NEW PURCHASES — Items & Prices (From 1 Sep 2026, split 3 ways)
+      </div>
+      <div class="table-container">
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Item / Purchase</th>
+                <th>Name / Link</th>
+                <th style="text-align: right;">Price (PKR)</th>
+                <th style="text-align: center; width: 140px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="expensesNewBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- TAB 5: SEND MONEY (Upper & Lower Tables with Edit & Delete)  -->
+    <!-- ============================================================ -->
+    <div id="tab-sendmoney" class="tab-pane">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+        <span style="font-size:14px; font-weight:700; color:var(--primary-dark);">Company Outflow Transfers & Testing Payouts</span>
+        <button class="btn btn-blue" onclick="openSendMoneyModal('add')">+ Add Send Money</button>
+      </div>
+
+      <!-- Upper Table -->
+      <div class="excel-header-banner">
+        UPPER TABLE: SEND MONEY — Payments Made (Before 1 Sep 2026)
+      </div>
+      <div class="table-container">
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Send Money To</th>
+                <th style="text-align: right;">Amount Sent (PKR)</th>
+                <th style="text-align: center; width: 140px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="sendMoneyOldBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Lower Table -->
+      <div class="excel-header-banner" style="margin-top: 24px;">
+        LOWER TABLE: NEW SEND MONEY — Payments Made (From 1 Sep 2026, split 3 ways)
+      </div>
+      <div class="table-container">
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Send Money To</th>
+                <th style="text-align: right;">Amount Sent (PKR)</th>
+                <th style="text-align: center; width: 140px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="sendMoneyNewBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- TAB 6: SCENARIO C (Skip Rule: Written + Visual Graphs)       -->
+    <!-- ============================================================ -->
+    <div id="tab-scenarioc" class="tab-pane">
+      <div class="excel-header-banner">
+        HEXALEVEL — SCENARIO C (3 MEMBERS · 2 WORKING · 1 SKIPPED)
+      </div>
+      <div class="excel-sub-banner">
+        Mathematical Rule: Active members get 23.33% direct pay. The skipped member gets PKR 0.00. The unallocated 23.33% transfers to Company Share (Company gets 53.33%). In Net Profit attribution, surplus is credited ONLY to working members.
+      </div>
+
+      <!-- Mathematical Logic Explanation Box -->
+      <div style="background: #ecfdf5; border: 1px solid #86efac; border-radius: 8px; padding: 18px 22px; margin-bottom: 22px; font-size: 13.5px; line-height: 1.7;">
+        <h3 style="color: #065f46; font-size: 15px; margin-bottom: 8px;">📌 Mathematical Mechanics of the Skip Rule:</h3>
+        <ul style="padding-left: 20px; color: #166534;">
+          <li><strong>Direct Project Payment:</strong> The 2 working members receive <strong>23.33%</strong> direct project share each. The non-participating member is marked <span class="badge-skip">SKIP</span> and receives <strong>PKR 0.00</strong>.</li>
+          <li><strong>Company Earnings Transfer:</strong> The unallocated third-member share (23.33%) is automatically added to Company Share (Base 30% + 23.33% = <strong>53.33% Total Company Share</strong>).</li>
+          <li><strong>Net Profit Attribution:</strong> In company net profit distributions, the surplus earned from this project is <strong>strictly credited 50/50 between the two active members</strong>. The skipped member receives <strong>0 surplus</strong>. Consequently, the working members' net profit increases while the skipped member's net profit does not increase.</li>
+        </ul>
+      </div>
+
+      <!-- COMPANY NET PROFIT & SKIPS WATERFALL CARDS -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 22px;">
+        <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:14px 16px;">
+          <div style="font-size:11.5px; font-weight:700; color:#64748b; text-transform:uppercase;">Gross Company Inflow</div>
+          <div style="font-size:20px; font-weight:800; color:#0f172a; margin-top:4px;" id="scCoGrossInflow">PKR 0.00</div>
+          <div style="font-size:11px; color:#475569; margin-top:2px;">Base 50%/30% + Skipped Shares</div>
+        </div>
+
+        <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:14px 16px;">
+          <div style="font-size:11.5px; font-weight:700; color:#1e40af; text-transform:uppercase;">Added from Skipped Shares</div>
+          <div style="font-size:20px; font-weight:800; color:#1d4ed8; margin-top:4px;" id="scCoSkipAdded">+ PKR 0.00</div>
+          <div style="font-size:11px; color:#3b82f6; margin-top:2px;">Transferred from 23.33% skips</div>
+        </div>
+
+        <div style="background:#fff1f2; border:1px solid #fecdd3; border-radius:8px; padding:14px 16px;">
+          <div style="font-size:11.5px; font-weight:700; color:#9f1239; text-transform:uppercase;">Operating Deductions</div>
+          <div style="font-size:20px; font-weight:800; color:#e11d48; margin-top:4px;" id="scCoDeductions">- PKR 0.00</div>
+          <div style="font-size:11px; color:#be123c; margin-top:2px;" id="scCoDeductionsSub">Purchases + Send Money</div>
+        </div>
+
+        <div style="background:#ecfdf5; border:2px solid #059669; border-radius:8px; padding:14px 16px;">
+          <div style="font-size:11.5px; font-weight:800; color:#065f46; text-transform:uppercase;">Overall Company Net Profit</div>
+          <div style="font-size:22px; font-weight:900; color:#047857; margin-top:4px;" id="scCoNetProfit">PKR 0.00</div>
+          <div style="font-size:11px; color:#059669; margin-top:2px;" id="scCoMargin">Net Profit Margin: 0.00%</div>
+        </div>
+      </div>
+
+      <!-- COMPANY DEDUCTION & RECONCILIATION WATERFALL TABLE -->
+      <div class="table-container" style="margin-bottom: 22px;">
+        <div style="padding:10px 16px; background:#f1f5f9; border-bottom:1px solid #e2e8f0; font-weight:800; font-size:13px; color:#1e293b; display:flex; justify-content:space-between; align-items:center;">
+          <span>🏛️ COMPANY NET PROFIT WATERFALL & DEDUCTION AUDIT</span>
+          <span style="font-size:11.5px; font-weight:600; color:#64748b;">All deductions & skip additions reconciled</span>
+        </div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Financial Item / Component</th>
+                <th>Category</th>
+                <th>Calculation Rule / Source</th>
+                <th style="text-align: right;">Amount (PKR)</th>
+                <th style="text-align: right;">Impact on Company</th>
+              </tr>
+            </thead>
+            <tbody id="companyWaterfallBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Written Data Table -->
+      <div class="table-container">
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Project ID</th>
+                <th>Client Name</th>
+                <th style="text-align: right;">Payment (PKR)</th>
+                <th>Status</th>
+                <th style="text-align: right;">Shaista (23.33%)</th>
+                <th style="text-align: right;">Amara (23.33%)</th>
+                <th style="text-align: right;">Urooj (23.33%)</th>
+                <th style="text-align: right;">Skipped Share to Co (23.33%)</th>
+                <th style="text-align: right;">Total Company (53.33%)</th>
+                <th>Distribution Rule</th>
+              </tr>
+            </thead>
+            <tbody id="scenarioCBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- VISUAL GRAPHS FOR SCENARIO C -->
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-card-title">
+            <span>Scenario Comparison: Capital Allocation %</span>
+            <span style="font-size:11px; font-weight:600; color:#64748b;">Scenario A vs B vs C</span>
+          </div>
+          <div style="height: 250px;">
+            <canvas id="chartScenarioCompare"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-card-title">
+            <span>Scenario C Fund Distribution</span>
+            <span style="font-size:11px; font-weight:600; color:#64748b;">Company 53.33% vs Working Members 46.67%</span>
+          </div>
+          <div style="height: 250px; display: flex; align-items: center; justify-content: center;">
+            <canvas id="chartScenarioCPie"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- TAB 7: MEMBER NET PROFIT (Statements + Skips & Deductions)   -->
+    <!-- ============================================================ -->
+    <div id="tab-memberprofit" class="tab-pane">
+      <div class="excel-header-banner">
+        HEXALEVEL — FINANCIAL STATEMENTS & NET PROFIT ATTRIBUTION
+      </div>
+      <div class="excel-sub-banner">
+        Full Individual Breakdown: Direct Project Payouts, Skipped Projects Count, Skipped Amount Deductions, Scenario C Surplus Gained, and Final Net Earnings.
+      </div>
+
+      <!-- Clean Cards Grid without Co-Founder / Partner labels -->
+      <div class="partner-cards-grid">
+        <!-- Shaista -->
+        <div class="p-card">
+          <div class="p-card-header">
+            <span>Shaista</span>
+            <span style="font-size:12px; font-weight:700; color:#a7f3d0;">Active</span>
+          </div>
+          <div class="p-card-body">
+            <div class="p-card-row"><span>Projects Participated:</span><span class="val" id="pShaistaWorked">0</span></div>
+            <div class="p-card-row">
+              <span>Projects Skipped:</span>
+              <span class="val" id="pShaistaSkippedCount">0</span>
+            </div>
+            <div class="p-card-row">
+              <span>Forfeited from Skips:</span>
+              <span class="val" style="color:#b91c1c;" id="pShaistaDeducted">- PKR 0.00</span>
+            </div>
+            <div class="p-card-row"><span>Direct Project Payouts:</span><span class="val" id="pShaistaDirect">PKR 0.00</span></div>
+            <div class="p-card-row">
+              <span>Scenario C Surplus Gained:</span>
+              <span class="val" style="color:#059669;" id="pShaistaSurplus">+ PKR 0.00</span>
+            </div>
+            <div class="p-card-total">
+              <span>FINAL NET PROFIT:</span>
+              <span class="val" id="pShaistaTotal">PKR 0.00</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Amara -->
+        <div class="p-card">
+          <div class="p-card-header">
+            <span>Amara</span>
+            <span style="font-size:12px; font-weight:700; color:#a7f3d0;">Active</span>
+          </div>
+          <div class="p-card-body">
+            <div class="p-card-row"><span>Projects Participated:</span><span class="val" id="pAmaraWorked">0</span></div>
+            <div class="p-card-row">
+              <span>Projects Skipped:</span>
+              <span class="val" id="pAmaraSkippedCount">0</span>
+            </div>
+            <div class="p-card-row">
+              <span>Forfeited from Skips:</span>
+              <span class="val" style="color:#b91c1c;" id="pAmaraDeducted">- PKR 0.00</span>
+            </div>
+            <div class="p-card-row"><span>Direct Project Payouts:</span><span class="val" id="pAmaraDirect">PKR 0.00</span></div>
+            <div class="p-card-row">
+              <span>Scenario C Surplus Gained:</span>
+              <span class="val" style="color:#059669;" id="pAmaraSurplus">+ PKR 0.00</span>
+            </div>
+            <div class="p-card-total">
+              <span>FINAL NET PROFIT:</span>
+              <span class="val" id="pAmaraTotal">PKR 0.00</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Urooj -->
+        <div class="p-card">
+          <div class="p-card-header">
+            <span>Urooj</span>
+            <span style="font-size:12px; font-weight:700; color:#a7f3d0;">Active</span>
+          </div>
+          <div class="p-card-body">
+            <div class="p-card-row"><span>Projects Participated:</span><span class="val" id="pUroojWorked">0</span></div>
+            <div class="p-card-row">
+              <span>Projects Skipped:</span>
+              <span class="val" id="pUroojSkippedCount">0</span>
+            </div>
+            <div class="p-card-row">
+              <span>Forfeited from Skips:</span>
+              <span class="val" style="color:#b91c1c;" id="pUroojDeducted">- PKR 0.00</span>
+            </div>
+            <div class="p-card-row"><span>Direct Project Payouts:</span><span class="val" id="pUroojDirect">PKR 0.00</span></div>
+            <div class="p-card-row">
+              <span>Scenario C Surplus Gained:</span>
+              <span class="val" style="color:#059669;" id="pUroojSurplus">+ PKR 0.00</span>
+            </div>
+            <div class="p-card-total">
+              <span>FINAL NET PROFIT:</span>
+              <span class="val" id="pUroojTotal">PKR 0.00</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Company Account Card -->
+        <div class="p-card" style="border: 2px solid #0d5c52;">
+          <div class="p-card-header" style="background: #0d5c52;">
+            <span>🏛️ Company Account</span>
+            <span style="font-size:12px; font-weight:700; color:#a7f3d0;">Retained</span>
+          </div>
+          <div class="p-card-body">
+            <div class="p-card-row">
+              <span>Gross Inflow (Base):</span>
+              <span class="val" id="pCoBase">PKR 0.00</span>
+            </div>
+            <div class="p-card-row">
+              <span>Added from Skips:</span>
+              <span class="val" style="color:#059669;" id="pCoSkips">+ PKR 0.00</span>
+            </div>
+            <div class="p-card-row">
+              <span>Purchases Deducted:</span>
+              <span class="val" style="color:#b91c1c;" id="pCoPurchases">- PKR 0.00</span>
+            </div>
+            <div class="p-card-row">
+              <span>Send Money Deducted:</span>
+              <span class="val" style="color:#b91c1c;" id="pCoSendMoney">- PKR 0.00</span>
+            </div>
+            <div class="p-card-row">
+              <span>Total Deductions:</span>
+              <span class="val" style="color:#b91c1c;" id="pCoTotalDeductions">- PKR 0.00</span>
+            </div>
+            <div class="p-card-total" style="border-top-color: #0d5c52;">
+              <span>COMPANY NET PROFIT:</span>
+              <span class="val" style="color:#0d5c52;" id="pCoFinalNet">PKR 0.00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Clean Summary Table -->
+      <div class="table-container">
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Member Name</th>
+                <th style="text-align: center;">Projects Participated</th>
+                <th style="text-align: center;">Projects Skipped</th>
+                <th style="text-align: right;">Forfeited Deduction (-23.33%)</th>
+                <th style="text-align: right;">Surplus Gained (+23.33%/2)</th>
+                <th style="text-align: right;">Direct Project Payouts</th>
+                <th style="text-align: right;">Final Net Profit</th>
+              </tr>
+            </thead>
+            <tbody id="partnerReconciliationBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- VISUAL GRAPH FOR PARTNER NET PROFIT -->
+      <div class="chart-card">
+        <div class="chart-card-title">
+          <span>Net Profit & Surplus Attribution Comparison</span>
+          <span style="font-size:11px; font-weight:600; color:#64748b;">Direct Pay vs Scenario C Surplus Credit vs Total Net</span>
+        </div>
+        <div style="height: 280px;">
+          <canvas id="chartPartnerEarnings"></canvas>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- TAB 8: ACTIVITY LOG (Filtered by Current User)              -->
+    <!-- ============================================================ -->
+    <div id="tab-activity" class="tab-pane">
+      <div class="excel-header-banner">
+        HEXALEVEL — SYSTEM AUDIT TRAIL & ACTIVITY LOG
+      </div>
+      <div class="excel-sub-banner" id="activitySubBanner">
+        Showing real-time change log for current session.
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 14px; flex-wrap:wrap; gap:12px;">
+        <div style="font-size:13.5px; font-weight:700; color:var(--primary-dark);" id="activityFilterTitle">
+          Showing activity log for: <span id="currentFilterName" style="color:var(--primary-teal); font-weight:800;">Amara</span>
+        </div>
+        
+        <!-- Admin-Only User Selector -->
+        <div id="adminFilterControls" style="display:none; align-items:center; gap:10px;">
+          <label style="font-size:12.5px; font-weight:700; color:#334155;">Admin User Filter:</label>
+          <select id="adminUserFilterSelect" class="form-control" style="width: auto; padding: 6px 12px; font-size: 13px; font-weight: 700; border-color:#0d5c52;" onchange="handleAdminUserFilterChange(this.value)">
+            <option value="all">👥 All Users (Full Activity)</option>
+            <option value="Shaista">Shaista</option>
+            <option value="Amara">Amara</option>
+            <option value="Urooj">Urooj</option>
+            <option value="Admin">Admin</option>
+          </select>
+        </div>
+
+        <!-- Regular User Controls -->
+        <div id="userFilterControls" style="display:flex; gap:8px;">
+          <button class="btn btn-edit" onclick="setActivityFilter('me')">Show Only My Activity</button>
+          <button class="btn btn-light" style="color:var(--primary-dark); background:#e2e8f0;" onclick="setActivityFilter('all')">Show All Activity</button>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 100px;">Log ID</th>
+                <th style="width: 170px;">Date & Time</th>
+                <th style="width: 140px;">User</th>
+                <th style="width: 160px;">Action Type</th>
+                <th style="width: 220px;">Tab / Module</th>
+                <th>Detailed Change Description</th>
+              </tr>
+            </thead>
+            <tbody id="activityLogBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+
+  <!-- ============================================================== -->
+  <!-- MODALS                                                         -->
+  <!-- ============================================================== -->
+
+  <!-- 1. PROJECT MODAL (Add / Edit) -->
+  <div id="projectModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span id="projModalTitle">Add Client Project</span>
+        <button style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;" onclick="closeModal('projectModal')">&times;</button>
+      </div>
+      <form id="projectForm" onsubmit="handleProjectSubmit(event)">
+        <input type="hidden" id="pEditId">
+        <input type="hidden" id="pPeriod" value="new">
+        
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Scenario & Revenue Distribution Rule (All Options)</label>
+            <select id="pScenario" class="form-control" onchange="handleScenarioSelectChange()" required>
+              <optgroup label="✨ New Model — From 1 Sep 2026 onwards (Active)">
+                <option value="Scenario C: Shaista & Amara (Urooj Skipped -> Co 53.33%)" selected>
+                  Scenario C: Shaista & Amara Working (Urooj Skipped → Co gets 53.33%)
+                </option>
+                <option value="Scenario C: Shaista & Urooj (Amara Skipped -> Co 53.33%)">
+                  Scenario C: Shaista & Urooj Working (Amara Skipped → Co gets 53.33%)
+                </option>
+                <option value="Scenario C: Amara & Urooj (Shaista Skipped -> Co 53.33%)">
+                  Scenario C: Amara & Urooj Working (Shaista Skipped → Co gets 53.33%)
+                </option>
+                <option value="Scenario B: 3 Members (30% Co / 23.33% Each)">
+                  Scenario B: All 3 Members Working (30% Co · 23.33% Each to Shaista, Amara & Urooj)
+                </option>
+              </optgroup>
+              <optgroup label="📜 Old Model — Before 1 Sep 2026 (Historical)">
+                <option value="Scenario A: 2 Members (50% Co / 25% Shaista / 25% Amara)">
+                  Scenario A: 2 Members Working (50% Co · 25% Shaista · 25% Amara)
+                </option>
+              </optgroup>
+            </select>
+          </div>
+
+          <div id="destinationIndicator" class="destination-indicator">
+            <span>📍</span>
+            <span id="destText">Destination: <strong>Lower Table (New Model from 1 Sep 2026)</strong> — Auto-syncs to Revenue Split & Scenario C</span>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Client Name</label>
+              <input type="text" id="pClient" class="form-control" required placeholder="e.g. Apex Global">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Project Name</label>
+              <input type="text" id="pProject" class="form-control" required placeholder="e.g. GHL Funnel CRM">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Payment Date</label>
+              <input type="date" id="pDate" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Service Type</label>
+              <select id="pService" class="form-control">
+                <option value="CRM">CRM</option>
+                <option value="WP">WP</option>
+                <option value="Both">Both</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Payment Amount (PKR)</label>
+              <input type="number" step="0.01" id="pAmount" class="form-control" required placeholder="e.g. 50000">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Payment Status</label>
+              <select id="pStatus" class="form-control">
+                <option value="Received">Received</option>
+                <option value="Pending">Pending</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Bank Account</label>
+              <input type="text" id="pBank" class="form-control" placeholder="Meezan / Nayapay / Askari / UBL">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Notes</label>
+              <input type="text" id="pNotes" class="form-control" placeholder="Project notes / transfer ref">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" style="background:#e2e8f0; color:#334155;" onclick="closeModal('projectModal')">Cancel</button>
+          <button type="submit" class="btn btn-green">Save Project</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. EXPENSE / PURCHASE MODAL (Add / Edit) -->
+  <div id="expenseModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span id="expModalTitle">Add Company Purchase / Expense</span>
+        <button style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;" onclick="closeModal('expenseModal')">&times;</button>
+      </div>
+      <form id="expenseForm" onsubmit="handleExpenseSubmit(event)">
+        <input type="hidden" id="eEditId">
+        <div class="modal-body">
+          <div class="destination-indicator">
+            <span>📍</span>
+            <span>Select whether this purchase belongs to the <strong>Upper Table (Before Sep 2026)</strong> or <strong>Lower Table (New Purchases from 1 Sep 2026)</strong>.</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Target Table Destination</label>
+            <select id="ePeriod" class="form-control" required>
+              <option value="old">Upper Table: Purchases (Before 1 Sep 2026)</option>
+              <option value="new">Lower Table: New Purchases (From 1 Sep 2026, split 3 ways)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Item / Purchase Name</label>
+            <input type="text" id="eItem" class="form-control" required placeholder="e.g. Domain Renewal, Upwork Connects, GHL Subscription">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Name / Link / Details</label>
+            <input type="text" id="eLink" class="form-control" placeholder="e.g. theghlvideo.com or receipt link">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Price (PKR)</label>
+            <input type="number" step="0.01" id="ePrice" class="form-control" required placeholder="e.g. 4955.00">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" style="background:#e2e8f0; color:#334155;" onclick="closeModal('expenseModal')">Cancel</button>
+          <button type="submit" class="btn btn-amber">Save Purchase</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. SEND MONEY MODAL (Add / Edit) -->
+  <div id="sendMoneyModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span id="sendModalTitle">Add Send Money Transfer</span>
+        <button style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;" onclick="closeModal('sendMoneyModal')">&times;</button>
+      </div>
+      <form id="sendMoneyForm" onsubmit="handleSendMoneySubmit(event)">
+        <input type="hidden" id="sEditId">
+        <div class="modal-body">
+          <div class="destination-indicator">
+            <span>📍</span>
+            <span>Select whether this payment belongs to the <strong>Upper Table (Before Sep 2026)</strong> or <strong>Lower Table (New Send Money from 1 Sep 2026)</strong>.</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Target Table Destination</label>
+            <select id="sPeriod" class="form-control" required>
+              <option value="old">Upper Table: Send Money (Before 1 Sep 2026)</option>
+              <option value="new">Lower Table: New Send Money (From 1 Sep 2026, split 3 ways)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Send Money To (Recipient / Purpose)</label>
+            <input type="text" id="sRecipient" class="form-control" required placeholder="e.g. Send Sundas for email testing">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Amount Sent (PKR)</label>
+            <input type="number" step="0.01" id="sAmount" class="form-control" required placeholder="e.g. 10000.00">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" style="background:#e2e8f0; color:#334155;" onclick="closeModal('sendMoneyModal')">Cancel</button>
+          <button type="submit" class="btn btn-blue">Save Payment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- ============================================================== -->
+  <!-- JAVASCRIPT LOGIC & CHARTS                                      -->
+  <!-- ============================================================== -->
+  <script>
+    let appData = null;
+    let charts = {};
+    let currentUser = localStorage.getItem('hl_user') || 'Amara';
+    let activityFilterMode = 'me'; // 'me' or 'all'
+    let adminSelectedUser = 'all';
+
+    function fmt(n) {
+      if (n === null || n === undefined || isNaN(n)) return '0.00';
+      return Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // AUTHENTICATION LOGIC
+    function checkAuth() {
+      const saved = localStorage.getItem('hl_user');
+      const loginOverlay = document.getElementById('loginScreen');
+      if (saved) {
+        currentUser = saved;
+        document.getElementById('currentUserName').innerText = '👤 ' + currentUser;
+        loginOverlay.style.display = 'none';
+        loadData();
+      } else {
+        loginOverlay.style.display = 'flex';
+      }
+    }
+
+    async function handleLoginSubmit(e) {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value;
+      const pass = document.getElementById('loginPass').value;
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email, password: pass })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          currentUser = data.user;
+          localStorage.setItem('hl_user', currentUser);
+          document.getElementById('currentUserName').innerText = '👤 ' + currentUser;
+          document.getElementById('loginScreen').style.display = 'none';
+          loadData();
+        } else {
+          alert(data.detail || 'Invalid login credentials.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Login failed. Please verify server connection.');
+      }
+    }
+
+    function logoutUser() {
+      localStorage.removeItem('hl_user');
+      location.reload();
+    }
+
+    function setActivityFilter(mode) {
+      activityFilterMode = mode;
+      loadData();
+    }
+
+    function handleAdminUserFilterChange(val) {
+      adminSelectedUser = val;
+      loadData();
+    }
+
+    function handleScenarioSelectChange() {
+      const scen = document.getElementById('pScenario').value;
+      const periodInput = document.getElementById('pPeriod');
+      const destText = document.getElementById('destText');
+      const destBox = document.getElementById('destinationIndicator');
+
+      if (scen.includes('Scenario A')) {
+        periodInput.value = 'old';
+        destText.innerHTML = 'Destination: <strong>Upper Table (Old 50/50 Model before 1 Sep 2026)</strong>';
+        destBox.style.background = '#e0e7ff';
+        destBox.style.borderColor = '#a5b4fc';
+        destBox.style.color = '#3730a3';
+      } else {
+        periodInput.value = 'new';
+        destText.innerHTML = 'Destination: <strong>Lower Table (New Model from 1 Sep 2026)</strong> — Auto-syncs to Revenue Split & Scenario C';
+        destBox.style.background = '#f0fdf4';
+        destBox.style.borderColor = '#86efac';
+        destBox.style.color = '#166534';
+      }
+    }
+
+    function showTab(tabId) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+      const pane = document.getElementById('tab-' + tabId);
+      if (pane) pane.classList.add('active');
+
+      const tabs = ['dashboard', 'projects', 'revenuesplit', 'expenses', 'sendmoney', 'scenarioc', 'memberprofit', 'activity'];
+      const titles = [
+        '📊 Dashboard Overview',
+        '📁 Client Projects Tracker',
+        '💰 Revenue Split Tables',
+        '🛒 Purchases & Expenses',
+        '💸 Send Money Outflows',
+        '🔀 Scenario C (Skip Rule & Charts)',
+        '👥 Financial Statements & Net Profit',
+        '🕒 System Audit Trail & Activity Log'
+      ];
+      const idx = tabs.indexOf(tabId);
+      if (idx !== -1) {
+        document.querySelectorAll('.nav-item')[idx].classList.add('active');
+        document.getElementById('pageTitle').innerText = titles[idx];
+      }
+    }
+
+    async function loadData() {
+      try {
+        let filterParam = 'all';
+        if (currentUser === 'Admin') {
+          filterParam = adminSelectedUser;
+        } else {
+          filterParam = (activityFilterMode === 'me') ? currentUser : 'all';
+        }
+        const res = await fetch(`/api/data?filter_user=${encodeURIComponent(filterParam)}`);
+        appData = await res.json();
+        renderAll();
+      } catch (err) {
+        console.error('Failed to load dashboard data:', err);
+      }
+    }
+
+    function renderAll() {
+      if (!appData) return;
+      const d = appData;
+
+      // 1. Dashboard Tab
+      document.getElementById('dOldRev').innerText = fmt(d.dashboard.old_rev);
+      document.getElementById('dOldCo').innerText = fmt(d.dashboard.old_co);
+      document.getElementById('dOldTeam').innerText = fmt(d.dashboard.old_team);
+      document.getElementById('dOldPurchases').innerText = fmt(d.dashboard.old_purchases);
+      document.getElementById('dOldNet').innerText = fmt(d.dashboard.old_net);
+      document.getElementById('dOldProjects').innerText = d.dashboard.old_projects;
+      document.getElementById('dOldReceived').innerText = d.dashboard.old_received;
+      document.getElementById('dOldSend').innerText = fmt(d.dashboard.old_send);
+
+      document.getElementById('dNewRev').innerText = fmt(d.dashboard.new_rev);
+      document.getElementById('dNewCo').innerText = fmt(d.dashboard.new_co);
+      document.getElementById('dNewTeam').innerText = fmt(d.dashboard.new_team);
+      document.getElementById('dNewPurchases').innerText = fmt(d.dashboard.new_purchases);
+      document.getElementById('dNewNet').innerText = fmt(d.dashboard.new_net);
+      document.getElementById('dNewProjects').innerText = d.dashboard.new_projects;
+      document.getElementById('dNewReceived').innerText = d.dashboard.new_received;
+      document.getElementById('dNewSend').innerText = fmt(d.dashboard.new_send);
+
+      document.getElementById('dAllRev').innerText = fmt(d.dashboard.all_rev);
+      document.getElementById('dAllNet').innerText = fmt(d.dashboard.all_net);
+      document.getElementById('dAllProjects').innerText = d.dashboard.all_projects;
+      document.getElementById('dAllReceived').innerText = d.dashboard.all_received;
+
+      // 2. Projects Tracker Tab (with Edit & Delete)
+      let projHtml = '';
+      let totAmt = 0;
+      d.projects.forEach(p => {
+        totAmt += p.amount;
+        const stClass = (p.status === 'Received') ? 'badge-received' : 'badge-pending';
+        const targetBadge = p.period === 'old' 
+          ? '<span class="tag-upper">Upper (Old 50/50)</span>' 
+          : '<span class="tag-lower">Lower (New 30/70)</span>';
+
+        projHtml += `
+          <tr>
+            <td>${p.start}</td>
+            <td style="font-weight:700;">${p.client}</td>
+            <td>${p.project}</td>
+            <td>${p.service}</td>
+            <td style="text-align: right; font-weight:700;">${fmt(p.amount)}</td>
+            <td>${p.currency}</td>
+            <td><span class="${stClass}">● ${p.status}</span></td>
+            <td>${p.date}</td>
+            <td>${p.notes}</td>
+            <td>${p.bank}</td>
+            <td style="text-align:center;">${targetBadge}</td>
+            <td style="text-align:center;">
+              <button class="btn btn-edit" onclick='openProjectModal("edit", ${JSON.stringify(p)})'>Edit</button>
+              <button class="btn btn-delete" onclick='deleteProject("${p.id}")'>Delete</button>
+            </td>
+          </tr>
+        `;
+      });
+      projHtml += `
+        <tr class="tr-total">
+          <td colspan="4" style="text-align:center;">TOTAL</td>
+          <td style="text-align: right;">${fmt(totAmt)}</td>
+          <td colspan="7"></td>
+        </tr>
+      `;
+      document.getElementById('projectsTrackerBody').innerHTML = projHtml;
+
+      // 3. Revenue Split Old Body
+      let oldHtml = '';
+      let totOldAmt = 0, totOldCo = 0, totOldTeam = 0;
+      d.split_old.forEach(r => {
+        totOldAmt += r.amount;
+        totOldCo += r.company;
+        totOldTeam += r.team;
+        oldHtml += `
+          <tr>
+            <td>${r.month}</td>
+            <td style="text-align: right; font-weight:700;">${fmt(r.amount)}</td>
+            <td style="text-align: right;">${fmt(r.company)}</td>
+            <td style="text-align: right;">${fmt(r.team)}</td>
+            <td><span class="badge-received">${r.status}</span></td>
+            <td>${r.date}</td>
+            <td>${r.shaista}</td>
+            <td>${r.amara}</td>
+            <td>${r.tax}</td>
+          </tr>
+        `;
+      });
+      oldHtml += `
+        <tr class="tr-total">
+          <td>TOTAL</td>
+          <td style="text-align: right;">${fmt(totOldAmt)}</td>
+          <td style="text-align: right;">${fmt(totOldCo)}</td>
+          <td style="text-align: right;">${fmt(totOldTeam)}</td>
+          <td colspan="5"></td>
+        </tr>
+      `;
+      document.getElementById('revenueSplitOldBody').innerHTML = oldHtml;
+
+      // 3b. Revenue Split New Body
+      let newHtml = '';
+      let totNewAmt = 0, totNewCo = 0, totNewSh = 0, totNewAm = 0, totNewUr = 0;
+      d.split_new.forEach(r => {
+        totNewAmt += r.amount;
+        totNewCo += r.company;
+        totNewSh += r.shaista;
+        totNewAm += r.amara;
+        totNewUr += r.urooj;
+        newHtml += `
+          <tr>
+            <td>${r.month}</td>
+            <td style="text-align: right; font-weight:700;">${fmt(r.amount)}</td>
+            <td style="text-align: right; font-weight:700;">${fmt(r.company)}</td>
+            <td style="text-align: right;">${r.shaista > 0 ? fmt(r.shaista) : '<span class="badge-skip">0.00</span>'}</td>
+            <td style="text-align: right;">${r.amara > 0 ? fmt(r.amara) : '<span class="badge-skip">0.00</span>'}</td>
+            <td style="text-align: right;">${r.urooj > 0 ? fmt(r.urooj) : '<span class="badge-skip">0.00</span>'}</td>
+            <td><span class="badge-received">${r.status}</span></td>
+            <td>${r.date}</td>
+            <td>${r.shaista_acc}</td>
+            <td>${r.amara_acc}</td>
+            <td>${r.urooj_acc}</td>
+            <td>${r.tax}</td>
+            <td>${r.notes}</td>
+          </tr>
+        `;
+      });
+      newHtml += `
+        <tr class="tr-total">
+          <td>TOTAL</td>
+          <td style="text-align: right;">${fmt(totNewAmt)}</td>
+          <td style="text-align: right;">${fmt(totNewCo)}</td>
+          <td style="text-align: right;">${fmt(totNewSh)}</td>
+          <td style="text-align: right;">${fmt(totNewAm)}</td>
+          <td style="text-align: right;">${fmt(totNewUr)}</td>
+          <td colspan="7"></td>
+        </tr>
+      `;
+      document.getElementById('revenueSplitNewBody').innerHTML = newHtml;
+
+      // 4. Expenses (Purchases) - Old & New
+      let expOldHtml = '';
+      let totExpOld = 0;
+      d.expenses_old.forEach(e => {
+        totExpOld += e.price;
+        expOldHtml += `
+          <tr>
+            <td style="font-weight:600;">${e.item}</td>
+            <td>${e.link}</td>
+            <td style="text-align: right; font-weight:700;">${fmt(e.price)}</td>
+            <td style="text-align: center;">
+              <button class="btn btn-edit" onclick='openExpenseModal("edit", ${JSON.stringify(e)}, "old")'>Edit</button>
+              <button class="btn btn-delete" onclick='deleteExpense("${e.id}")'>Delete</button>
+            </td>
+          </tr>
+        `;
+      });
+      expOldHtml += `
+        <tr class="tr-total">
+          <td colspan="2">TOTAL</td>
+          <td style="text-align: right;">${fmt(totExpOld)}</td>
+          <td></td>
+        </tr>
+      `;
+      document.getElementById('expensesOldBody').innerHTML = expOldHtml;
+
+      let expNewHtml = '';
+      let totExpNew = 0;
+      d.expenses_new.forEach(e => {
+        totExpNew += e.price;
+        expNewHtml += `
+          <tr>
+            <td style="font-weight:600;">${e.item}</td>
+            <td>${e.link}</td>
+            <td style="text-align: right; font-weight:700;">${fmt(e.price)}</td>
+            <td style="text-align: center;">
+              <button class="btn btn-edit" onclick='openExpenseModal("edit", ${JSON.stringify(e)}, "new")'>Edit</button>
+              <button class="btn btn-delete" onclick='deleteExpense("${e.id}")'>Delete</button>
+            </td>
+          </tr>
+        `;
+      });
+      expNewHtml += `
+        <tr class="tr-total">
+          <td colspan="2">TOTAL</td>
+          <td style="text-align: right;">${fmt(totExpNew)}</td>
+          <td></td>
+        </tr>
+      `;
+      document.getElementById('expensesNewBody').innerHTML = expNewHtml;
+
+      // 5. Send Money - Old & New
+      let smOldHtml = '';
+      let totSmOld = 0;
+      d.send_money_old.forEach(s => {
+        totSmOld += s.amount;
+        smOldHtml += `
+          <tr>
+            <td style="font-weight:600;">${s.recipient}</td>
+            <td style="text-align: right; font-weight:700;">${fmt(s.amount)}</td>
+            <td style="text-align: center;">
+              <button class="btn btn-edit" onclick='openSendMoneyModal("edit", ${JSON.stringify(s)}, "old")'>Edit</button>
+              <button class="btn btn-delete" onclick='deleteSendMoney("${s.id}")'>Delete</button>
+            </td>
+          </tr>
+        `;
+      });
+      smOldHtml += `
+        <tr class="tr-total">
+          <td>TOTAL</td>
+          <td style="text-align: right;">${fmt(totSmOld)}</td>
+          <td></td>
+        </tr>
+      `;
+      document.getElementById('sendMoneyOldBody').innerHTML = smOldHtml;
+
+      let smNewHtml = '';
+      let totSmNew = 0;
+      d.send_money_new.forEach(s => {
+        totSmNew += s.amount;
+        smNewHtml += `
+          <tr>
+            <td style="font-weight:600;">${s.recipient}</td>
+            <td style="text-align: right; font-weight:700;">${fmt(s.amount)}</td>
+            <td style="text-align: center;">
+              <button class="btn btn-edit" onclick='openSendMoneyModal("edit", ${JSON.stringify(s)}, "new")'>Edit</button>
+              <button class="btn btn-delete" onclick='deleteSendMoney("${s.id}")'>Delete</button>
+            </td>
+          </tr>
+        `;
+      });
+      smNewHtml += `
+        <tr class="tr-total">
+          <td>TOTAL</td>
+          <td style="text-align: right;">${fmt(totSmNew)}</td>
+          <td></td>
+        </tr>
+      `;
+      document.getElementById('sendMoneyNewBody').innerHTML = smNewHtml;
+
+      // 6. Scenario C Table
+      let scHtml = '';
+      let totScAmt = 0, totScSh = 0, totScAm = 0, totScUr = 0, totScSkip = 0, totScCo = 0;
+      d.scenario_c.forEach(c => {
+        totScAmt += c.amount;
+        totScSh += c.shaista;
+        totScAm += c.amara;
+        totScUr += c.urooj;
+        totScSkip += c.skip_to_co;
+        totScCo += c.total_co;
+
+        const shBadge = c.shaista > 0 ? `<span class="badge-active">PKR ${fmt(c.shaista)}</span>` : `<span class="badge-skip">SKIP (0.00)</span>`;
+        const amBadge = c.amara > 0 ? `<span class="badge-active">PKR ${fmt(c.amara)}</span>` : `<span class="badge-skip">SKIP (0.00)</span>`;
+        const urBadge = c.urooj > 0 ? `<span class="badge-active">PKR ${fmt(c.urooj)}</span>` : `<span class="badge-skip">SKIP (0.00)</span>`;
+
+        scHtml += `
+          <tr>
+            <td style="font-weight:700;">${c.id}</td>
+            <td>${c.client}</td>
+            <td style="text-align: right; font-weight:700;">${fmt(c.amount)}</td>
+            <td><span class="badge-received">${c.status}</span></td>
+            <td style="text-align: right;">${shBadge}</td>
+            <td style="text-align: right;">${amBadge}</td>
+            <td style="text-align: right;">${urBadge}</td>
+            <td style="text-align: right; color:#b91c1c; font-weight:700;">+ ${fmt(c.skip_to_co)}</td>
+            <td style="text-align: right; font-weight:800; color:#065f46;">${fmt(c.total_co)}</td>
+            <td style="font-size:11.5px;">${c.notes}</td>
+          </tr>
+        `;
+      });
+      scHtml += `
+        <tr class="tr-total">
+          <td colspan="2" style="text-align:center;">TOTAL</td>
+          <td style="text-align: right;">${fmt(totScAmt)}</td>
+          <td></td>
+          <td style="text-align: right;">${fmt(totScSh)}</td>
+          <td style="text-align: right;">${fmt(totScAm)}</td>
+          <td style="text-align: right;">${fmt(totScUr)}</td>
+          <td style="text-align: right;">${fmt(totScSkip)}</td>
+          <td style="text-align: right;">${fmt(totScCo)}</td>
+          <td></td>
+        </tr>
+      `;
+      document.getElementById('scenarioCBody').innerHTML = scHtml;
+
+      // 7. Member Net Profit & Deductions Cards (Clean names)
+      const sh = d.partners.shaista;
+      const am = d.partners.amara;
+      const ur = d.partners.urooj;
+      const cs = d.company_statement;
+
+      if (cs) {
+        document.getElementById('scCoGrossInflow').innerText = 'PKR ' + fmt(cs.total_gross_inflow);
+        document.getElementById('scCoSkipAdded').innerText = '+ PKR ' + fmt(cs.sc_skip_additions);
+        document.getElementById('scCoDeductions').innerText = '- PKR ' + fmt(cs.total_deductions);
+        document.getElementById('scCoDeductionsSub').innerText = `Purchases (${fmt(cs.purchases_deducted)}) + Send (${fmt(cs.send_money_deducted)})`;
+        document.getElementById('scCoNetProfit').innerText = 'PKR ' + fmt(cs.overall_net_profit);
+        document.getElementById('scCoMargin').innerText = `Company Net Profit Margin: ${cs.net_profit_margin_pct}%`;
+
+        // Waterfall Table
+        let wfHtml = `
+          <tr>
+            <td><strong>1. Historical Company Share (Old Model)</strong></td>
+            <td><span style="background:#e0e7ff; color:#3730a3; padding:2px 7px; border-radius:4px; font-size:11.5px; font-weight:700;">Revenue Inflow</span></td>
+            <td>50% of Old Model Received Projects (Dec 2025 – Oct 2026)</td>
+            <td style="text-align: right; font-weight:700;">${fmt(cs.old_co_share)}</td>
+            <td style="text-align: right; color:#059669; font-weight:700;">+ Inflow</td>
+          </tr>
+          <tr>
+            <td><strong>2. Base Company Share (New Model)</strong></td>
+            <td><span style="background:#e0e7ff; color:#3730a3; padding:2px 7px; border-radius:4px; font-size:11.5px; font-weight:700;">Revenue Inflow</span></td>
+            <td>30% Base Company Share (From 1 Sep 2026 onwards)</td>
+            <td style="text-align: right; font-weight:700;">${fmt(cs.new_co_base_share)}</td>
+            <td style="text-align: right; color:#059669; font-weight:700;">+ Inflow</td>
+          </tr>
+          <tr style="background:#f0fdf4;">
+            <td><strong>3. Scenario C Skipped Member Shares Rerouted</strong></td>
+            <td><span style="background:#dcfce7; color:#166534; padding:2px 7px; border-radius:4px; font-size:11.5px; font-weight:700;">Skip Reallocation</span></td>
+            <td>Unallocated 23.33% shares from skipped members transferred to Company</td>
+            <td style="text-align: right; font-weight:800; color:#15803d;">+ ${fmt(cs.sc_skip_additions)}</td>
+            <td style="text-align: right; color:#15803d; font-weight:800;">+ Boosts Co Share to 53.33%</td>
+          </tr>
+          <tr style="background:#f8fafc; font-weight:800; border-top:1px solid #cbd5e1; border-bottom:1px solid #cbd5e1;">
+            <td>TOTAL GROSS COMPANY INFLOW</td>
+            <td>Gross Earnings</td>
+            <td>Base (50% + 30%) + All Scenario C Skips</td>
+            <td style="text-align: right; font-size:14px; color:#0f172a;">${fmt(cs.total_gross_inflow)}</td>
+            <td style="text-align: right; color:#0f172a;">Total Available Capital</td>
+          </tr>
+          <tr>
+            <td><strong>4. Operating Purchases & Tools Deducted</strong></td>
+            <td><span style="background:#fee2e2; color:#991b1b; padding:2px 7px; border-radius:4px; font-size:11.5px; font-weight:700;">Operating Expense</span></td>
+            <td>Domains, Software, Courses, Connects from Purchases Sheet</td>
+            <td style="text-align: right; font-weight:700; color:#b91c1c;">- ${fmt(cs.purchases_deducted)}</td>
+            <td style="text-align: right; color:#b91c1c; font-weight:700;">- Direct Deduction</td>
+          </tr>
+          <tr>
+            <td><strong>5. Send Money Outflows Deducted</strong></td>
+            <td><span style="background:#fee2e2; color:#991b1b; padding:2px 7px; border-radius:4px; font-size:11.5px; font-weight:700;">Cash Outflow</span></td>
+            <td>Manual transfers, testing and payments from Send Money Sheet</td>
+            <td style="text-align: right; font-weight:700; color:#b91c1c;">- ${fmt(cs.send_money_deducted)}</td>
+            <td style="text-align: right; color:#b91c1c; font-weight:700;">- Direct Deduction</td>
+          </tr>
+          <tr style="background:#fff1f2; font-weight:800;">
+            <td>TOTAL DEDUCTIONS FROM COMPANY</td>
+            <td>Total Outflows</td>
+            <td>Sum of Purchases + Send Money</td>
+            <td style="text-align: right; font-size:14px; color:#9f1239;">- ${fmt(cs.total_deductions)}</td>
+            <td style="text-align: right; color:#9f1239;">Total Capital Deducted</td>
+          </tr>
+          <tr style="background:#ecfdf5; font-size:15px; font-weight:900; border-top:2px solid #059669; border-bottom:2px solid #059669;">
+            <td style="color:#065f46;">🏛️ OVERALL COMPANY NET PROFIT</td>
+            <td><span style="background:#059669; color:#fff; padding:3px 9px; border-radius:4px; font-size:12px;">Net Retained Profit</span></td>
+            <td style="color:#047857; font-size:13px;">Gross Inflow (including Skips) minus Total Deductions</td>
+            <td style="text-align: right; color:#047857; font-size:16px;">PKR ${fmt(cs.overall_net_profit)}</td>
+            <td style="text-align: right; color:#047857;">Margin: ${cs.net_profit_margin_pct}%</td>
+          </tr>
+        `;
+        document.getElementById('companyWaterfallBody').innerHTML = wfHtml;
+
+        // Populate Company Statement Card in Tab 7
+        document.getElementById('pCoBase').innerText = 'PKR ' + fmt(cs.old_co_share + cs.new_co_base_share);
+        document.getElementById('pCoSkips').innerText = '+ PKR ' + fmt(cs.sc_skip_additions);
+        document.getElementById('pCoPurchases').innerText = '- PKR ' + fmt(cs.purchases_deducted);
+        document.getElementById('pCoSendMoney').innerText = '- PKR ' + fmt(cs.send_money_deducted);
+        document.getElementById('pCoTotalDeductions').innerText = '- PKR ' + fmt(cs.total_deductions);
+        document.getElementById('pCoFinalNet').innerText = 'PKR ' + fmt(cs.overall_net_profit);
+      }
+
+      document.getElementById('pShaistaWorked').innerText = sh.projects_worked;
+      document.getElementById('pShaistaSkippedCount').innerText = sh.projects_skipped;
+      document.getElementById('pShaistaDeducted').innerText = '- PKR ' + fmt(sh.skipped_deduction);
+      document.getElementById('pShaistaDirect').innerText = 'PKR ' + fmt(sh.direct);
+      document.getElementById('pShaistaSurplus').innerText = '+ PKR ' + fmt(sh.surplus);
+      document.getElementById('pShaistaTotal').innerText = 'PKR ' + fmt(sh.total_net);
+
+      document.getElementById('pAmaraWorked').innerText = am.projects_worked;
+      document.getElementById('pAmaraSkippedCount').innerText = am.projects_skipped;
+      document.getElementById('pAmaraDeducted').innerText = '- PKR ' + fmt(am.skipped_deduction);
+      document.getElementById('pAmaraDirect').innerText = 'PKR ' + fmt(am.direct);
+      document.getElementById('pAmaraSurplus').innerText = '+ PKR ' + fmt(am.surplus);
+      document.getElementById('pAmaraTotal').innerText = 'PKR ' + fmt(am.total_net);
+
+      document.getElementById('pUroojWorked').innerText = ur.projects_worked;
+      document.getElementById('pUroojSkippedCount').innerText = ur.projects_skipped;
+      document.getElementById('pUroojDeducted').innerText = '- PKR ' + fmt(ur.skipped_deduction);
+      document.getElementById('pUroojDirect').innerText = 'PKR ' + fmt(ur.direct);
+      document.getElementById('pUroojSurplus').innerText = '+ PKR ' + fmt(ur.surplus);
+      document.getElementById('pUroojTotal').innerText = 'PKR ' + fmt(ur.total_net);
+
+      // Reconciliation Table without Co-Founder / Partner
+      let reconHtml = `
+        <tr>
+          <td style="font-weight:700; font-size:14px;">Shaista</td>
+          <td style="text-align:center; font-weight:700;">${sh.projects_worked}</td>
+          <td style="text-align:center; font-weight:700;">${sh.projects_skipped}</td>
+          <td style="text-align:right; color:#b91c1c; font-weight:700;">- ${fmt(sh.skipped_deduction)}</td>
+          <td style="text-align:right; color:#059669; font-weight:700;">+ ${fmt(sh.surplus)}</td>
+          <td style="text-align:right; font-weight:700;">${fmt(sh.direct)}</td>
+          <td style="text-align:right; font-weight:800; color:#065f46; font-size:14px;">${fmt(sh.total_net)}</td>
+        </tr>
+        <tr>
+          <td style="font-weight:700; font-size:14px;">Amara</td>
+          <td style="text-align:center; font-weight:700;">${am.projects_worked}</td>
+          <td style="text-align:center; font-weight:700;">${am.projects_skipped}</td>
+          <td style="text-align:right; color:#b91c1c; font-weight:700;">- ${fmt(am.skipped_deduction)}</td>
+          <td style="text-align:right; color:#059669; font-weight:700;">+ ${fmt(am.surplus)}</td>
+          <td style="text-align:right; font-weight:700;">${fmt(am.direct)}</td>
+          <td style="text-align:right; font-weight:800; color:#065f46; font-size:14px;">${fmt(am.total_net)}</td>
+        </tr>
+        <tr>
+          <td style="font-weight:700; font-size:14px;">Urooj</td>
+          <td style="text-align:center; font-weight:700;">${ur.projects_worked}</td>
+          <td style="text-align:center; font-weight:700;">${ur.projects_skipped}</td>
+          <td style="text-align:right; color:#b91c1c; font-weight:700;">- ${fmt(ur.skipped_deduction)}</td>
+          <td style="text-align:right; color:#059669; font-weight:700;">+ ${fmt(ur.surplus)}</td>
+          <td style="text-align:right; font-weight:700;">${fmt(ur.direct)}</td>
+          <td style="text-align:right; font-weight:800; color:#065f46; font-size:14px;">${fmt(ur.total_net)}</td>
+        </tr>
+      `;
+
+      if (cs) {
+        reconHtml += `
+          <tr style="background:#f0fdf4; font-weight:800; border-top:2px solid #059669;">
+            <td style="font-size:14px; color:#065f46;">🏛️ Company Account</td>
+            <td style="text-align:center; font-weight:700;">${d.dashboard.all_projects}</td>
+            <td style="text-align:center; font-weight:700;">-</td>
+            <td style="text-align:right; color:#b91c1c; font-weight:700;">- ${fmt(cs.total_deductions)} (Expenses)</td>
+            <td style="text-align:right; color:#059669; font-weight:700;">+ ${fmt(cs.sc_skip_additions)} (Skips)</td>
+            <td style="text-align:right; font-weight:700;">${fmt(cs.total_gross_inflow)}</td>
+            <td style="text-align:right; font-weight:900; color:#065f46; font-size:15px;">${fmt(cs.overall_net_profit)}</td>
+          </tr>
+        `;
+      }
+
+      document.getElementById('partnerReconciliationBody').innerHTML = reconHtml;
+
+      // 8. Activity Log - User Filtered
+      if (currentUser === 'Admin') {
+        document.getElementById('adminFilterControls').style.display = 'flex';
+        document.getElementById('userFilterControls').style.display = 'none';
+        document.getElementById('adminUserFilterSelect').value = adminSelectedUser;
+        const selName = (adminSelectedUser === 'all') ? 'All Users (Full Company Audit)' : adminSelectedUser;
+        document.getElementById('currentFilterName').innerText = selName;
+      } else {
+        document.getElementById('adminFilterControls').style.display = 'none';
+        document.getElementById('userFilterControls').style.display = 'flex';
+        document.getElementById('currentFilterName').innerText = (activityFilterMode === 'me') ? currentUser : 'All Users';
+      }
+      let actHtml = '';
+      (d.activity_logs || []).forEach(act => {
+        let uBadge = '#3b82f6';
+        if (act.user === 'Shaista') uBadge = '#0d5c52';
+        else if (act.user === 'Amara') uBadge = '#8b5cf6';
+        else if (act.user === 'Urooj') uBadge = '#f59e0b';
+
+        actHtml += `
+          <tr>
+            <td style="font-weight:700; color:#64748b;">${act.id}</td>
+            <td style="white-space:nowrap; font-size:12px; color:#475569;">${act.timestamp}</td>
+            <td>
+              <span style="background:${uBadge}; color:#fff; padding:3px 9px; border-radius:4px; font-weight:700; font-size:11.5px;">
+                ${act.user}
+              </span>
+            </td>
+            <td><strong style="color:#0f172a; font-size:12px;">${act.action}</strong></td>
+            <td><span style="background:#f1f5f9; padding:3px 7px; border-radius:4px; border:1px solid #e2e8f0; font-size:12px;">${act.tab}</span></td>
+            <td>${act.details}</td>
+          </tr>
+        `;
+      });
+      if (!d.activity_logs || d.activity_logs.length === 0) {
+        actHtml = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#64748b;">No activity recorded for ${currentUser} yet.</td></tr>`;
+      }
+      document.getElementById('activityLogBody').innerHTML = actHtml;
+
+      // Render Visual Charts
+      renderCharts(d);
+    }
+
+    // ==============================================================
+    // CHART RENDERING (Chart.js)
+    // ==============================================================
+    function renderCharts(d) {
+      // 1. Dashboard Revenue Pie
+      const pieCtx = document.getElementById('chartRevenuePie');
+      if (pieCtx) {
+        if (charts.pie) charts.pie.destroy();
+        charts.pie = new Chart(pieCtx, {
+          type: 'doughnut',
+          data: {
+            labels: d.chart_data.revenue_breakdown.labels,
+            datasets: [{
+              data: d.chart_data.revenue_breakdown.values,
+              backgroundColor: ['#0d5c52', '#f43f5e', '#f59e0b', '#3b82f6'],
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { font: { size: 11.5, family: 'Inter' } } } }
+          }
+        });
+      }
+
+      // 2. Dashboard Model Comparison
+      const compCtx = document.getElementById('chartModelComparison');
+      if (compCtx) {
+        if (charts.comp) charts.comp.destroy();
+        charts.comp = new Chart(compCtx, {
+          type: 'bar',
+          data: {
+            labels: ['Total Revenue', 'Company Share', 'Team Share', 'Net Profit'],
+            datasets: [
+              {
+                label: 'Old Model (50/50)',
+                data: [d.dashboard.old_rev, d.dashboard.old_co, d.dashboard.old_team, d.dashboard.old_net],
+                backgroundColor: '#0d5c52'
+              },
+              {
+                label: 'New Model (30/70)',
+                data: [d.dashboard.new_rev, d.dashboard.new_co, d.dashboard.new_team, d.dashboard.new_net],
+                backgroundColor: '#10b981'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true } },
+            plugins: { legend: { position: 'bottom', labels: { font: { family: 'Inter' } } } }
+          }
+        });
+      }
+
+      // 3. Scenario Comparison Chart
+      const scCompareCtx = document.getElementById('chartScenarioCompare');
+      if (scCompareCtx) {
+        if (charts.scCompare) charts.scCompare.destroy();
+        charts.scCompare = new Chart(scCompareCtx, {
+          type: 'bar',
+          data: {
+            labels: d.chart_data.scenario_comparison.labels,
+            datasets: [
+              { label: 'Company Share %', data: d.chart_data.scenario_comparison.company_pct, backgroundColor: '#0d5c52' },
+              { label: 'Shaista %', data: d.chart_data.scenario_comparison.shaista_pct, backgroundColor: '#3b82f6' },
+              { label: 'Amara %', data: d.chart_data.scenario_comparison.amara_pct, backgroundColor: '#8b5cf6' },
+              { label: 'Urooj %', data: d.chart_data.scenario_comparison.urooj_pct, backgroundColor: '#f59e0b' }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } }
+            },
+            plugins: { legend: { position: 'bottom', labels: { font: { family: 'Inter' } } } }
+          }
+        });
+      }
+
+      // 4. Scenario C Fund Flow Pie
+      const scPieCtx = document.getElementById('chartScenarioCPie');
+      if (scPieCtx) {
+        if (charts.scPie) charts.scPie.destroy();
+        charts.scPie = new Chart(scPieCtx, {
+          type: 'pie',
+          data: {
+            labels: ['Company Base (30%)', 'Unallocated to Co (23.33%)', 'Active Member 1 (23.33%)', 'Active Member 2 (23.33%)'],
+            datasets: [{
+              data: [30.0, 23.33, 23.33, 23.33],
+              backgroundColor: ['#0d5c52', '#b91c1c', '#3b82f6', '#8b5cf6'],
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { font: { size: 11, family: 'Inter' } } } }
+          }
+        });
+      }
+
+      // 5. Partner Net Profit & Surplus Attribution
+      const partCtx = document.getElementById('chartPartnerEarnings');
+      if (partCtx) {
+        if (charts.partner) charts.partner.destroy();
+        charts.partner = new Chart(partCtx, {
+          type: 'bar',
+          data: {
+            labels: d.chart_data.partner_earnings.labels,
+            datasets: [
+              { label: 'Direct Project Payouts (PKR)', data: d.chart_data.partner_earnings.direct, backgroundColor: '#3b82f6' },
+              { label: 'Scenario C Surplus Profit (PKR)', data: d.chart_data.partner_earnings.surplus, backgroundColor: '#f59e0b' },
+              { label: 'Total Net Earnings (PKR)', data: d.chart_data.partner_earnings.net, backgroundColor: '#0d5c52' }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true } },
+            plugins: { legend: { position: 'bottom', labels: { font: { family: 'Inter' } } } }
+          }
+        });
+      }
+    }
+
+    // ==============================================================
+    // MODAL HANDLERS
+    // ==============================================================
+    function openProjectModal(mode, data = null) {
+      document.getElementById('projectForm').reset();
+      if (mode === 'add') {
+        document.getElementById('projModalTitle').innerText = 'Add New Client Project';
+        document.getElementById('pEditId').value = '';
+        document.getElementById('pDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('pScenario').value = 'Scenario C: Shaista & Amara (Urooj Skipped -> Co 53.33%)';
+      } else {
+        document.getElementById('projModalTitle').innerText = 'Edit Client Project (' + data.id + ')';
+        document.getElementById('pEditId').value = data.id;
+        document.getElementById('pScenario').value = data.scenario;
+        document.getElementById('pClient').value = data.client;
+        document.getElementById('pProject').value = data.project;
+        document.getElementById('pDate').value = data.date;
+        document.getElementById('pService').value = data.service;
+        document.getElementById('pAmount').value = data.amount;
+        document.getElementById('pStatus').value = data.status;
+        document.getElementById('pBank').value = data.bank;
+        document.getElementById('pNotes').value = data.notes;
+      }
+      handleScenarioSelectChange();
+      document.getElementById('projectModal').classList.add('active');
+    }
+
+    function openExpenseModal(mode, data = null, period = 'old') {
+      document.getElementById('expenseForm').reset();
+      if (mode === 'add') {
+        document.getElementById('expModalTitle').innerText = 'Add Company Purchase / Expense';
+        document.getElementById('eEditId').value = '';
+      } else {
+        document.getElementById('expModalTitle').innerText = 'Edit Purchase (' + data.id + ')';
+        document.getElementById('eEditId').value = data.id;
+        document.getElementById('ePeriod').value = period;
+        document.getElementById('eItem').value = data.item;
+        document.getElementById('eLink').value = data.link;
+        document.getElementById('ePrice').value = data.price;
+      }
+      document.getElementById('expenseModal').classList.add('active');
+    }
+
+    function openSendMoneyModal(mode, data = null, period = 'old') {
+      document.getElementById('sendMoneyForm').reset();
+      if (mode === 'add') {
+        document.getElementById('sendModalTitle').innerText = 'Add Send Money Transfer';
+        document.getElementById('sEditId').value = '';
+      } else {
+        document.getElementById('sendModalTitle').innerText = 'Edit Send Money (' + data.id + ')';
+        document.getElementById('sEditId').value = data.id;
+        document.getElementById('sPeriod').value = period;
+        document.getElementById('sRecipient').value = data.recipient;
+        document.getElementById('sAmount').value = data.amount;
+      }
+      document.getElementById('sendMoneyModal').classList.add('active');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('active');
+    }
+
+    // CRUD SUBMIT HANDLERS
+    async function handleProjectSubmit(e) {
+      e.preventDefault();
+      const editId = document.getElementById('pEditId').value;
+      const scen = document.getElementById('pScenario').value;
+      const period = scen.includes('Scenario A') ? 'old' : 'new';
+
+      const payload = {
+        id: editId || null,
+        period: period,
+        scenario: scen,
+        client: document.getElementById('pClient').value,
+        project: document.getElementById('pProject').value,
+        start: document.getElementById('pDate').value.substring(0, 7),
+        date: document.getElementById('pDate').value,
+        service: document.getElementById('pService').value,
+        amount: parseFloat(document.getElementById('pAmount').value),
+        currency: 'PKR',
+        status: document.getElementById('pStatus').value,
+        bank: document.getElementById('pBank').value,
+        notes: document.getElementById('pNotes').value,
+        user: currentUser
+      };
+
+      const url = editId ? `/api/project/${editId}` : '/api/project';
+      const method = editId ? 'PUT' : 'POST';
+
+      try {
+        const res = await fetch(url, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          closeModal('projectModal');
+          await loadData();
+          alert(editId ? 'Project updated & auto-synced to Revenue Split!' : 'Project added & auto-synced to Revenue Split!');
+        } else {
+          alert('Failed to save project');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Error saving project');
+      }
+    }
+
+    async function deleteProject(id) {
+      if (!confirm('Are you sure you want to delete project ' + id + '? It will also be removed from Revenue Split.')) return;
+      try {
+        const res = await fetch(`/api/project/${id}?user=${encodeURIComponent(currentUser)}`, { method: 'DELETE' });
+        if (res.ok) {
+          await loadData();
+          alert('Project & synchronized records deleted!');
+        } else {
+          alert('Failed to delete project');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Error deleting project');
+      }
+    }
+
+    async function handleExpenseSubmit(e) {
+      e.preventDefault();
+      const editId = document.getElementById('eEditId').value;
+      const payload = {
+        id: editId || null,
+        period: document.getElementById('ePeriod').value,
+        item: document.getElementById('eItem').value,
+        link: document.getElementById('eLink').value,
+        price: parseFloat(document.getElementById('ePrice').value),
+        user: currentUser
+      };
+
+      const url = editId ? `/api/expense/${editId}` : '/api/expense';
+      const method = editId ? 'PUT' : 'POST';
+
+      try {
+        const res = await fetch(url, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          closeModal('expenseModal');
+          await loadData();
+          alert(editId ? 'Purchase updated successfully!' : 'Purchase added successfully!');
+        } else {
+          alert('Failed to save purchase');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Error saving purchase');
+      }
+    }
+
+    async function deleteExpense(id) {
+      if (!confirm('Are you sure you want to delete this purchase entry?')) return;
+      try {
+        const res = await fetch(`/api/expense/${id}?user=${encodeURIComponent(currentUser)}`, { method: 'DELETE' });
+        if (res.ok) {
+          await loadData();
+          alert('Purchase deleted successfully!');
+        } else {
+          alert('Failed to delete purchase');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Error deleting purchase');
+      }
+    }
+
+    async function handleSendMoneySubmit(e) {
+      e.preventDefault();
+      const editId = document.getElementById('sEditId').value;
+      const payload = {
+        id: editId || null,
+        period: document.getElementById('sPeriod').value,
+        recipient: document.getElementById('sRecipient').value,
+        amount: parseFloat(document.getElementById('sAmount').value),
+        user: currentUser
+      };
+
+      const url = editId ? `/api/sendmoney/${editId}` : '/api/sendmoney';
+      const method = editId ? 'PUT' : 'POST';
+
+      try {
+        const res = await fetch(url, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          closeModal('sendMoneyModal');
+          await loadData();
+          alert(editId ? 'Payment transfer updated!' : 'Payment transfer added!');
+        } else {
+          alert('Failed to save payment transfer');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Error saving payment transfer');
+      }
+    }
+
+    async function deleteSendMoney(id) {
+      if (!confirm('Are you sure you want to delete this payment record?')) return;
+      try {
+        const res = await fetch(`/api/sendmoney/${id}?user=${encodeURIComponent(currentUser)}`, { method: 'DELETE' });
+        if (res.ok) {
+          await loadData();
+          alert('Payment record deleted!');
+        } else {
+          alert('Failed to delete payment record');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Error deleting payment record');
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      handleScenarioSelectChange();
+      checkAuth();
+    });
+  </script>
+</body>
+</html>
