@@ -18,11 +18,14 @@ const BLOB_TOKEN = process.env.PUBLIC_BLOB_READ_WRITE_TOKEN || process.env.BLOB_
 let memoryData = null;
 let lastBlobSync = 0;
 
-async function syncFromBlob() {
+async function syncFromBlob(force = false) {
   if (!isVercel || !BLOB_TOKEN) return;
-  if (memoryData && (Date.now() - lastBlobSync < 3000)) return;
+  if (!force && memoryData && (Date.now() - lastBlobSync < 1500)) return;
   try {
-    const res = await fetch(BLOB_URL + '?t=' + Date.now(), { cache: 'no-store' });
+    const res = await fetch(BLOB_URL + '?t=' + Date.now(), {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache, no-store' }
+    });
     if (res.ok) {
       const remoteData = await res.json();
       if (remoteData && remoteData.users && Array.isArray(remoteData.users)) {
@@ -42,152 +45,18 @@ async function persistToBlob(data) {
   if (!isVercel || !BLOB_TOKEN) return;
   try {
     const { put } = require('@vercel/blob');
-    await put('dashboard_data.json', JSON.stringify(data, null, 2), {
+    const res = await put('dashboard_data.json', JSON.stringify(data, null, 2), {
       access: 'public',
       addRandomSuffix: false,
       allowOverwrite: true,
       token: BLOB_TOKEN
     });
+    lastBlobSync = Date.now();
+    console.log('✅ Successfully persisted to Vercel Blob:', res.url);
   } catch (err) {
-    console.error('Error persisting to Vercel Blob:', err.message);
+    console.error('❌ Error persisting to Vercel Blob:', err.message);
   }
 }
-
-
-const USERS_DB = {
-  "admin@hexalevel.com": { name: "Admin", passwords: ["admin", "admin123"] }
-};
-
-// ==============================================================
-// REAL EMAIL (SMTP) INVITATION DISPATCH ENGINE
-// ==============================================================
-function getEffectiveBaseUrl(req, data) {
-  const forwardedProto = req.headers['x-forwarded-proto'];
-  const forwardedHost = req.headers['x-forwarded-host'];
-  const reqHost = forwardedHost || req.headers.host;
-
-  if (reqHost && !reqHost.includes('localhost') && !reqHost.includes('127.0.0.1')) {
-    const proto = forwardedProto || 'https';
-    return `${proto}://${reqHost}`;
-  }
-
-  if (data && data.email_settings && data.email_settings.base_url && data.email_settings.base_url.trim()) {
-    const cfg = data.email_settings.base_url.trim().replace(/\/$/, '');
-    if (!cfg.includes('localhost') && !cfg.includes('127.0.0.1')) {
-      return cfg;
-    }
-  }
-
-  if (isVercel) {
-    return 'https://hexalevel.vercel.app';
-  }
-
-  const proto = forwardedProto || 'http';
-  return `${proto}://${reqHost || 'localhost:8000'}`;
-}
-
-function getEmailTransporter(settings) {
-  if (!settings || !settings.sender_email || !settings.sender_password) {
-    return null;
-  }
-  const port = parseInt(settings.smtp_port) || 465;
-  const isSecure = (settings.smtp_secure !== undefined) ? Boolean(settings.smtp_secure) : (port === 465);
-
-  return nodemailer.createTransport({
-    host: settings.smtp_host || 'smtp.gmail.com',
-    port: port,
-    secure: isSecure,
-    auth: {
-      user: settings.sender_email.trim(),
-      pass: settings.sender_password.trim()
-    },
-    tls: {
-      rejectUnauthorized: false
-    }
-  });
-}
-
-async function sendInvitationEmail(user, inviteLink, settings) {
-  const transporter = getEmailTransporter(settings);
-  if (!transporter) {
-    return {
-      sent: false,
-      reason: 'SMTP settings not configured. Please configure your Gmail or SMTP credentials in Email Settings.'
-    };
-  }
-
-  const senderName = settings.sender_name || 'HEXALEVEL Dashboard';
-  const senderEmail = settings.sender_email.trim();
-
-  const mailHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <style>
-    body { margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; }
-    .wrapper { width: 100%; background-color: #f1f5f9; padding: 36px 12px; }
-    .content-table { max-width: 560px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border-spacing: 0; box-shadow: 0 10px 25px rgba(0,0,0,0.08); border: 1px solid #e2e8f0; }
-    .header { background: linear-gradient(135deg, #073831 0%, #0d5c52 100%); padding: 30px 24px; text-align: center; }
-    .header h1 { margin: 0; color: #ffffff; font-size: 22px; font-weight: 800; letter-spacing: 1px; }
-    .header p { margin: 6px 0 0 0; color: #99f6e4; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .body { padding: 32px 28px; font-size: 14.5px; line-height: 1.6; color: #334155; }
-    .btn-container { text-align: center; margin: 26px 0; }
-    .btn-cta { display: inline-block; background-color: #0d5c52; color: #ffffff !important; padding: 13px 30px; border-radius: 8px; font-size: 14.5px; font-weight: 700; text-decoration: none; }
-    .link-box { background-color: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 6px; padding: 10px 12px; font-family: monospace; font-size: 12px; color: #0284c7; word-break: break-all; margin-top: 8px; }
-    .footer { background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 18px 24px; text-align: center; font-size: 12px; color: #64748b; }
-  </style>
-</head>
-<body>
-  <div class="wrapper">
-    <table class="content-table" width="100%" cellpadding="0" cellspacing="0">
-      <tr>
-        <td class="header">
-          <h1>HEXALEVEL</h1>
-          <p>Financial Management & Revenue Distribution</p>
-        </td>
-      </tr>
-      <tr>
-        <td class="body">
-          <h2 style="margin-top: 0; color: #0f172a; font-size: 18px;">Welcome, ${user.name}!</h2>
-          <p>You have been invited by the Administrator to access the <strong>HEXALEVEL Financial Management Dashboard</strong> as an authorized member.</p>
-          <p>Please click the button below to create your secure password and activate your account:</p>
-          
-          <div class="btn-container">
-            <a href="${inviteLink}" class="btn-cta" target="_blank">🔐 Set Up My Password</a>
-          </div>
-
-          <p style="font-size: 12.5px; color: #64748b; margin-top: 22px;">If the button above does not open, copy and paste this link into your web browser:</p>
-          <div class="link-box">${inviteLink}</div>
-
-          <p style="font-size: 12px; color: #94a3b8; margin-top: 24px;">
-            This invitation was sent exclusively to <strong>${user.email}</strong>.
-          </p>
-        </td>
-      </tr>
-      <tr>
-        <td class="footer">
-          © 2026 HEXALEVEL • Financial Management System
-        </td>
-      </tr>
-    </table>
-  </div>
-</body>
-</html>`;
-
-  try {
-    const info = await transporter.sendMail({
-      from: `"${senderName}" <${senderEmail}>`,
-      to: user.email,
-      subject: `Action Required: Set Up Your Hexalevel Dashboard Account`,
-      text: `Hello ${user.name},\n\nYou have been invited to the Hexalevel Financial Management Dashboard.\n\nPlease set your password using this link:\n${inviteLink}\n\nHexalevel Financial Management`,
-      html: mailHtml
-    });
-    return { sent: true, messageId: info.messageId };
-  } catch (err) {
-    return { sent: false, error: err.message };
-  }
-}
-
 function loadData() {
   if (memoryData && memoryData.users && memoryData.users.length > 0) {
     return memoryData;
@@ -228,13 +97,13 @@ function loadData() {
   return data;
 }
 
-function saveData(data) {
+async function saveData(data) {
   memoryData = data;
   try {
     fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
   } catch (e) {}
   if (isVercel) {
-    persistToBlob(data);
+    await persistToBlob(data);
   }
 }
 
@@ -768,7 +637,7 @@ const server = http.createServer(async (req, res) => {
           status: "Active"
         };
         users.push(user);
-        saveData(data);
+        await saveData(data);
       }
 
       if (!user) {
@@ -794,7 +663,7 @@ const server = http.createServer(async (req, res) => {
       user.last_login = timestamp;
       user.login_count = (user.login_count || 0) + 1;
       logActivity(data, user.name, "USER_LOGIN", "Authentication", `${user.name} logged in with email ${user.email}.`);
-      saveData(data);
+      await saveData(data);
 
       return sendJson(res, 200, {
         status: "success",
@@ -834,7 +703,7 @@ const server = http.createServer(async (req, res) => {
       user.last_login = timestamp;
 
       logActivity(data, user.name, "PASSWORD_RESET", "Authentication", `${user.name} set/reset their password for ${user.email}.`);
-      saveData(data);
+      await saveData(data);
 
       return sendJson(res, 200, {
         status: "success",
@@ -875,7 +744,7 @@ const server = http.createServer(async (req, res) => {
       user.login_count = (user.login_count || 0) + 1;
 
       logActivity(data, user.name, "USER_ACTIVATED", "Users Management", `${user.name} activated account and set custom password via email notification.`);
-      saveData(data);
+      await saveData(data);
 
       return sendJson(res, 200, {
         status: "success",
@@ -909,7 +778,7 @@ const server = http.createServer(async (req, res) => {
       if (!user.passwords.includes(newPass)) user.passwords.unshift(newPass);
 
       logActivity(data, user.name, "PASSWORD_CHANGE", "Authentication", `${user.name} changed their account password.`);
-      saveData(data);
+      await saveData(data);
 
       return sendJson(res, 200, {
         status: "success",
@@ -952,7 +821,7 @@ const server = http.createServer(async (req, res) => {
       const oldEmail = user.email;
       user.email = newEmail;
       logActivity(data, user.name, "CHANGE_EMAIL", "Profile", `${user.name} changed account email from ${oldEmail} to ${newEmail}.`);
-      saveData(data);
+      await saveData(data);
 
       return sendJson(res, 200, {
         status: "success",
@@ -1016,7 +885,7 @@ const server = http.createServer(async (req, res) => {
       const emailResult = await sendInvitationEmail(newUser, inviteLink, data.email_settings);
       
       logActivity(data, "Admin", "INVITE_USER", "Users Management", `Invitation notification for ${name} (${email}). Real Email Sent: ${emailResult.sent ? 'YES' : 'NO (' + (emailResult.error || emailResult.reason) + ')'}`);
-      saveData(data);
+      await saveData(data);
 
       return sendJson(res, 201, {
         status: "success",
@@ -1049,7 +918,7 @@ const server = http.createServer(async (req, res) => {
 
       const emailResult = await sendInvitationEmail(user, inviteLink, data.email_settings);
       logActivity(data, "Admin", "RESEND_INVITE", "Users Management", `Resent invitation to ${user.email}. Real Email Sent: ${emailResult.sent ? 'YES' : 'NO'}`);
-      saveData(data);
+      await saveData(data);
 
       return sendJson(res, 200, {
         status: "success",
@@ -1084,7 +953,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       logActivity(data, "Admin", "EDIT_USER", "Users Management", `Admin updated user account for "${user.name}" (${user.email}).`);
-      saveData(data);
+      await saveData(data);
 
       return sendJson(res, 200, { status: "success", user });
     }
@@ -1106,7 +975,7 @@ const server = http.createServer(async (req, res) => {
 
       data.users = users.filter(u => u.id !== target.id);
       logActivity(data, "Admin", "DELETE_USER", "Users Management", `Admin deleted user account "${target.name}" (${target.email}).`);
-      saveData(data);
+      await saveData(data);
 
       return sendJson(res, 200, { status: "success", deleted: target.id });
     }
@@ -1143,7 +1012,7 @@ const server = http.createServer(async (req, res) => {
       if (body.base_url !== undefined) data.email_settings.base_url = body.base_url.trim();
 
       logActivity(data, "Admin", "UPDATE_EMAIL_SETTINGS", "Settings", `Admin updated SMTP email settings (${data.email_settings.sender_email}).`);
-      saveData(data);
+      await saveData(data);
 
       return sendJson(res, 200, {
         status: "success",
@@ -1316,7 +1185,7 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      saveData(data);
+      await saveData(data);
       return sendJson(res, 200, { status: "success", id: pid });
     }
 
@@ -1431,7 +1300,7 @@ const server = http.createServer(async (req, res) => {
 
       logActivity(data, userName, "EDIT_PROJECT", "Projects & Revenue Split",
         `${userName} edited project ${pid} '${p.client}' (PKR ${amt.toLocaleString()}).`);
-      saveData(data);
+      await saveData(data);
       return sendJson(res, 200, { status: "success" });
     }
 
@@ -1450,7 +1319,7 @@ const server = http.createServer(async (req, res) => {
 
       logActivity(data, userName, "DELETE_PROJECT", "Projects & Revenue Split",
         `${userName} deleted project ${pid} '${clientName}' and synchronized records.`);
-      saveData(data);
+      await saveData(data);
       return sendJson(res, 200, { status: "success" });
     }
 
@@ -1473,7 +1342,7 @@ const server = http.createServer(async (req, res) => {
       }
       logActivity(data, userName, "ADD_PURCHASE", tabName,
         `${userName} added purchase '${e.item}' (PKR ${(parseFloat(e.price) || 0).toLocaleString()}).`);
-      saveData(data);
+      await saveData(data);
       return sendJson(res, 200, { status: "success", id: eid });
     }
 
@@ -1507,7 +1376,7 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 404, { detail: "Expense not found" });
       }
 
-      saveData(data);
+      await saveData(data);
       return sendJson(res, 200, { status: "success" });
     }
 
@@ -1521,7 +1390,7 @@ const server = http.createServer(async (req, res) => {
       data.expenses_new = (data.expenses_new || []).filter(x => x.id !== eid);
 
       logActivity(data, userName, "DELETE_PURCHASE", "Purchases", `${userName} deleted purchase ${eid}.`);
-      saveData(data);
+      await saveData(data);
       return sendJson(res, 200, { status: "success" });
     }
 
@@ -1544,7 +1413,7 @@ const server = http.createServer(async (req, res) => {
       }
       logActivity(data, userName, "ADD_SEND_MONEY", tabName,
         `${userName} sent money to '${s.recipient}' (PKR ${(parseFloat(s.amount) || 0).toLocaleString()}).`);
-      saveData(data);
+      await saveData(data);
       return sendJson(res, 200, { status: "success", id: sid });
     }
 
@@ -1578,7 +1447,7 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 404, { detail: "Record not found" });
       }
 
-      saveData(data);
+      await saveData(data);
       return sendJson(res, 200, { status: "success" });
     }
 
@@ -1592,7 +1461,7 @@ const server = http.createServer(async (req, res) => {
       data.send_money_new = (data.send_money_new || []).filter(x => x.id !== sid);
 
       logActivity(data, userName, "DELETE_SEND_MONEY", "Send Money", `${userName} deleted payment ${sid}.`);
-      saveData(data);
+      await saveData(data);
       return sendJson(res, 200, { status: "success" });
     }
 
@@ -1623,7 +1492,7 @@ const server = http.createServer(async (req, res) => {
 
       data.credentials.push(newCred);
       logActivity(data, "Admin", "ADD_CREDENTIAL", "Website Credentials", `Added login credential for "${newCred.website_name}" (${newCred.user_name || 'No username'}).`);
-      saveData(data);
+      await saveData(data);
 
       return sendJson(res, 201, { status: "success", credential: newCred });
     }
@@ -1650,7 +1519,7 @@ const server = http.createServer(async (req, res) => {
       };
 
       logActivity(data, "Admin", "UPDATE_CREDENTIAL", "Website Credentials", `Updated login credential for "${data.credentials[index].website_name}".`);
-      saveData(data);
+      await saveData(data);
 
       return sendJson(res, 200, { status: "success", credential: data.credentials[index] });
     }
@@ -1667,7 +1536,7 @@ const server = http.createServer(async (req, res) => {
 
       data.credentials = data.credentials.filter(c => c.id !== credId);
       logActivity(data, "Admin", "DELETE_CREDENTIAL", "Website Credentials", `Deleted login credential for "${target.website_name}".`);
-      saveData(data);
+      await saveData(data);
 
       return sendJson(res, 200, { status: "success", deleted: credId });
     }
