@@ -348,17 +348,17 @@
     {
       "id": "PRJ-024",
       "start": "2026-10",
-      "client": "test",
-      "project": "ghl",
-      "service": "CRM",
+      "client": "Test",
+      "project": "Ghl",
+      "service": "WP",
       "amount": 5000.0,
       "currency": "PKR",
       "status": "Received",
-      "date": "2026-10-30",
+      "date": "2026-10-31",
       "notes": "",
       "bank": "",
       "period": "new",
-      "scenario": "Scenario C: Amara & Urooj (Shaista Skipped -> Co 53.33%)"
+      "scenario": "Scenario C: Shaista & Urooj (Amara Skipped -> Co 53.33%)"
     }
   ],
   "split_old": [
@@ -638,17 +638,17 @@
       "month": "2026-10",
       "amount": 5000.0,
       "company": 2666.666666666667,
-      "shaista": 0.0,
-      "amara": 1166.6666666666667,
+      "shaista": 1166.6666666666667,
+      "amara": 0.0,
       "urooj": 1166.6666666666667,
       "status": "Received",
-      "date": "2026-10-30",
-      "shaista_acc": "SKIP (0.00)",
-      "amara_acc": "Askari",
+      "date": "2026-10-31",
+      "shaista_acc": "Nayapay",
+      "amara_acc": "SKIP (0.00)",
       "urooj_acc": "UBL",
       "tax": "",
-      "notes": "Scenario C: Shaista Skipped -> Co 53.33%",
-      "scenario": "Scenario C: Amara & Urooj (Shaista Skipped -> Co 53.33%)"
+      "notes": "Scenario C: Amara Skipped -> Co 53.33%",
+      "scenario": "Scenario C: Shaista & Urooj (Amara Skipped -> Co 53.33%)"
     }
   ],
   "expenses_old": [
@@ -713,13 +713,7 @@
       "amount": 3250.0
     }
   ],
-  "send_money_new": [
-    {
-      "id": "SEND-NEW-001",
-      "recipient": "test",
-      "amount": 500.0
-    }
-  ],
+  "send_money_new": [],
   "scenario_c": [
     {
       "id": "PRJ-023",
@@ -737,20 +731,44 @@
     },
     {
       "id": "PRJ-024",
-      "client": "test (ghl)",
+      "client": "Test (Ghl)",
       "amount": 5000.0,
       "status": "Received",
-      "scenario": "Scenario C: Amara & Urooj (Shaista Skipped -> Co 53.33%)",
-      "shaista": 0.0,
-      "amara": 1166.6666666666667,
+      "scenario": "Scenario C: Shaista & Urooj (Amara Skipped -> Co 53.33%)",
+      "shaista": 1166.6666666666667,
+      "amara": 0.0,
       "urooj": 1166.6666666666667,
-      "skip_member": "Shaista",
+      "skip_member": "Amara",
       "skip_to_co": 1166.6666666666667,
       "total_co": 2666.666666666667,
-      "notes": "Shaista skipped -> unallocated 23.33% (PKR 1,166.67) to Company"
+      "notes": "Amara skipped -> unallocated 23.33% (PKR 1,166.67) to Company"
     }
   ],
   "activity_logs": [
+    {
+      "id": "ACT-022",
+      "timestamp": "2026-10-31 09:21:53",
+      "user": "Amara",
+      "action": "DELETE_SEND_MONEY",
+      "tab": "Send Money",
+      "details": "Amara deleted payment SEND-NEW-001."
+    },
+    {
+      "id": "ACT-021",
+      "timestamp": "2026-10-31 09:21:29",
+      "user": "Amara",
+      "action": "ADD_PROJECT",
+      "tab": "Projects, Revenue Split & Scenario C",
+      "details": "Amara added Scenario C project PRJ-024 'Test' (PKR 5,000.00) where Amara was SKIPPED."
+    },
+    {
+      "id": "ACT-020",
+      "timestamp": "2026-10-31 09:20:53",
+      "user": "Amara",
+      "action": "DELETE_PROJECT",
+      "tab": "Projects & Revenue Split",
+      "details": "Amara deleted project PRJ-024 'test' and synchronized records."
+    },
     {
       "id": "ACT-019",
       "timestamp": "2026-10-30 16:59:49",
