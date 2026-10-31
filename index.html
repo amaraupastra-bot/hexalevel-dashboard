@@ -3935,12 +3935,17 @@
 
     function openInGmail() {
       if (!currentInviteEmail || !currentInviteLink) return;
+      let sendLink = currentInviteLink;
+      if (window.location.hostname && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) {
+        sendLink = sendLink.replace(/https?:\/\/localhost(:\d+)?/gi, window.location.origin);
+      }
+      if (!currentInviteEmail || !currentInviteLink) return;
       const subject = encodeURIComponent('Hexalevel Dashboard: Set Up Your Account Password');
       const body = encodeURIComponent(
         'Hello ' + (currentInviteName || 'Team Member') + ',\n\n' +
         'You have been invited by the Administrator to access the HEXALEVEL Financial Management Dashboard.\n\n' +
         'Please click the link below to set up your password and activate your account:\n' +
-        currentInviteLink + '\n\n' +
+        sendLink + '\n\n' +
         'Best regards,\nHEXALEVEL Management'
       );
       const gmailUrl = 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(currentInviteEmail) + '&su=' + subject + '&body=' + body;
@@ -3948,6 +3953,9 @@
     }
 
     function showInviteSuccess(email, name, link, emailSent, emailError) {
+      if (window.location.hostname && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) {
+        link = link.replace(/https?:\/\/localhost(:\d+)?/gi, window.location.origin);
+      }
       currentInviteEmail = email;
       currentInviteName = name;
       currentInviteLink = link;

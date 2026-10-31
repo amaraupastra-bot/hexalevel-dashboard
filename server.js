@@ -19,6 +19,31 @@ const USERS_DB = {
 // ==============================================================
 // REAL EMAIL (SMTP) INVITATION DISPATCH ENGINE
 // ==============================================================
+function getEffectiveBaseUrl(req, data) {
+  const forwardedProto = req.headers['x-forwarded-proto'];
+  const forwardedHost = req.headers['x-forwarded-host'];
+  const reqHost = forwardedHost || req.headers.host;
+
+  if (reqHost && !reqHost.includes('localhost') && !reqHost.includes('127.0.0.1')) {
+    const proto = forwardedProto || 'https';
+    return `${proto}://${reqHost}`;
+  }
+
+  if (data && data.email_settings && data.email_settings.base_url && data.email_settings.base_url.trim()) {
+    const cfg = data.email_settings.base_url.trim().replace(/\/$/, '');
+    if (!cfg.includes('localhost') && !cfg.includes('127.0.0.1')) {
+      return cfg;
+    }
+  }
+
+  if (isVercel) {
+    return 'https://hexalevel.vercel.app';
+  }
+
+  const proto = forwardedProto || 'http';
+  return `${proto}://${reqHost || 'localhost:8000'}`;
+}
+
 function getEmailTransporter(settings) {
   if (!settings || !settings.sender_email || !settings.sender_password) {
     return null;
@@ -887,9 +912,7 @@ const server = http.createServer(async (req, res) => {
 
       data.users.push(newUser);
       
-      const baseUrl = (data.email_settings && data.email_settings.base_url)
-        ? data.email_settings.base_url.replace(/\/$/, '')
-        : ('http://' + (req.headers.host || 'localhost:8000'));
+      const baseUrl = getEffectiveBaseUrl(req, data);
       const inviteLink = `${baseUrl}/?action=set-password&email=${encodeURIComponent(email)}&token=${token}`;
 
       // Dispatch real email via SMTP if configured
@@ -924,9 +947,7 @@ const server = http.createServer(async (req, res) => {
 
       const token = crypto.randomBytes(16).toString('hex');
       user.invite_token = token;
-      const baseUrl = (data.email_settings && data.email_settings.base_url)
-        ? data.email_settings.base_url.replace(/\/$/, '')
-        : ('http://' + (req.headers.host || 'localhost:8000'));
+      const baseUrl = getEffectiveBaseUrl(req, data);
       const inviteLink = `${baseUrl}/?action=set-password&email=${encodeURIComponent(user.email)}&token=${token}`;
 
       const emailResult = await sendInvitationEmail(user, inviteLink, data.email_settings);

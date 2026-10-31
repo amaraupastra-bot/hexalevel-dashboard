@@ -906,12 +906,12 @@
     }
   ],
   "email_settings": {
-    "sender_email": "",
+    "sender_email": "info@hexalevel.com",
     "sender_name": "HEXALEVEL Financial Management",
-    "sender_password": "",
-    "smtp_host": "smtp.gmail.com",
+    "sender_password": "Hexalevel##22",
+    "smtp_host": "smtp.hostinger.com",
     "smtp_port": 465,
     "smtp_secure": true,
-    "base_url": "http://localhost:8000"
+    "base_url": "https://hexalevel.vercel.app"
   }
 }
