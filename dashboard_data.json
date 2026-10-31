@@ -685,6 +685,78 @@
   "scenario_c": [],
   "activity_logs": [
     {
+      "id": "ACT-010",
+      "timestamp": "2026-10-31 16:34:15",
+      "user": "Admin",
+      "action": "ADD_PROJECT",
+      "tab": "Projects & Revenue Split",
+      "details": "Admin added project PRJ-024 'undefined' (PKR 0) into Lower 30/70 Table."
+    },
+    {
+      "id": "ACT-009",
+      "timestamp": "2026-10-31 16:31:55",
+      "user": "Admin",
+      "action": "USER_LOGIN",
+      "tab": "Authentication",
+      "details": "Admin logged in with email admin@hexalevel.com."
+    },
+    {
+      "id": "ACT-008",
+      "timestamp": "2026-10-31 16:20:11",
+      "user": "Urooj",
+      "action": "CHANGE_EMAIL",
+      "tab": "Profile",
+      "details": "Urooj changed account email from urooj.team@hexalevel.com to urooj@hexalevel.com."
+    },
+    {
+      "id": "ACT-007",
+      "timestamp": "2026-10-31 16:19:55",
+      "user": "Urooj",
+      "action": "CHANGE_EMAIL",
+      "tab": "Profile",
+      "details": "Urooj changed account email from urooj@hexalevel.com to urooj.team@hexalevel.com."
+    },
+    {
+      "id": "ACT-006",
+      "timestamp": "2026-10-31 16:19:39",
+      "user": "Urooj",
+      "action": "USER_LOGIN",
+      "tab": "Authentication",
+      "details": "Urooj logged in with email urooj@hexalevel.com."
+    },
+    {
+      "id": "ACT-005",
+      "timestamp": "2026-10-31 16:11:15",
+      "user": "Urooj",
+      "action": "USER_ACTIVATED",
+      "tab": "Users Management",
+      "details": "Urooj activated account and set custom password via email notification."
+    },
+    {
+      "id": "ACT-004",
+      "timestamp": "2026-10-31 16:11:05",
+      "user": "Admin",
+      "action": "INVITE_USER",
+      "tab": "Users Management",
+      "details": "Invitation notification for Urooj (urooj@hexalevel.com). Real Email Sent: YES"
+    },
+    {
+      "id": "ACT-003",
+      "timestamp": "2026-10-31 16:05:04",
+      "user": "Shaista",
+      "action": "USER_ACTIVATED",
+      "tab": "Users Management",
+      "details": "Shaista activated account and set custom password via email notification."
+    },
+    {
+      "id": "ACT-002",
+      "timestamp": "2026-10-31 16:02:14",
+      "user": "Admin",
+      "action": "INVITE_USER",
+      "tab": "Users Management",
+      "details": "Invitation notification for Shaista (shaista@hexalevel.com). Real Email Sent: YES"
+    },
+    {
       "id": "ACT-001",
       "timestamp": "2026-10-31 19:33:47",
       "user": "Admin",
@@ -705,8 +777,8 @@
       ],
       "role": "Administrator",
       "created_at": "2026-10-31 12:00:00",
-      "last_login": "2026-10-31 19:30:00",
-      "login_count": 1,
+      "last_login": "2026-10-31 16:31:55",
+      "login_count": 2,
       "status": "Active"
     },
     {
@@ -720,6 +792,36 @@
       "login_count": 0,
       "status": "Pending Password Setup",
       "invite_token": "217c939d081111d9e1d7e6093bcd31da",
+      "role": "Member"
+    },
+    {
+      "id": "USR-003",
+      "name": "Shaista",
+      "email": "shaista@hexalevel.com",
+      "password": "ShaistaPassword@123",
+      "passwords": [
+        "ShaistaPassword@123"
+      ],
+      "created_at": "2026-10-31 16:02:13",
+      "last_login": "2026-10-31 16:05:04",
+      "login_count": 1,
+      "status": "Active",
+      "invite_token": "68c220e7329fc8fea143cfb778f8f880",
+      "role": "Member"
+    },
+    {
+      "id": "USR-004",
+      "name": "Urooj",
+      "email": "urooj@hexalevel.com",
+      "password": "UroojPassword@123",
+      "passwords": [
+        "UroojPassword@123"
+      ],
+      "created_at": "2026-10-31 16:11:04",
+      "last_login": "2026-10-31 16:19:39",
+      "login_count": 2,
+      "status": "Active",
+      "invite_token": "900dff3cee092fcb58d37e8e6129cc15",
       "role": "Member"
     }
   ],
@@ -913,5 +1015,7 @@
     "smtp_port": 465,
     "smtp_secure": true,
     "base_url": "https://hexalevel.vercel.app"
-  }
+  },
+  "_version": 1,
+  "_updatedAt": 1793464692730
 }

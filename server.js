@@ -20,7 +20,7 @@ let lastBlobSync = 0;
 
 async function syncFromBlob(force = false) {
   if (!isVercel || !BLOB_TOKEN) return;
-  if (!force && memoryData && (Date.now() - lastBlobSync < 500)) return;
+  if (!force && memoryData && (Date.now() - lastBlobSync < 1000)) return;
   try {
     const freshUrl = `${BLOB_URL}?download=1&_nocache=${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     const res = await fetch(freshUrl, {
@@ -34,11 +34,16 @@ async function syncFromBlob(force = false) {
     if (res.ok) {
       const remoteData = await res.json();
       if (remoteData && remoteData.users && Array.isArray(remoteData.users)) {
-        memoryData = remoteData;
-        lastBlobSync = Date.now();
-        try {
-          fs.writeFileSync(DATA_FILE, JSON.stringify(remoteData, null, 2), 'utf-8');
-        } catch (e) {}
+        const localVer = (memoryData && memoryData._version) || 0;
+        const remoteVer = remoteData._version || 0;
+        const recentlyModified = memoryData && memoryData._updatedAt && (Date.now() - memoryData._updatedAt < 3000);
+        if (!recentlyModified || remoteVer >= localVer) {
+          memoryData = remoteData;
+          lastBlobSync = Date.now();
+          try {
+            fs.writeFileSync(DATA_FILE, JSON.stringify(remoteData, null, 2), 'utf-8');
+          } catch (e) {}
+        }
       }
     }
   } catch (err) {
@@ -59,7 +64,7 @@ async function persistToBlob(data) {
     });
     memoryData = data;
     lastBlobSync = Date.now();
-    console.log('✅ Successfully persisted to Vercel Blob:', res.url);
+    console.log('✅ Successfully persisted to Vercel Blob (v' + (data._version || 0) + '):', res.url);
   } catch (err) {
     console.error('❌ Error persisting to Vercel Blob:', err.message);
   }
@@ -232,7 +237,10 @@ function loadData() {
 }
 
 async function saveData(data) {
+  data._version = (data._version || 0) + 1;
+  data._updatedAt = Date.now();
   memoryData = data;
+  lastBlobSync = Date.now();
   try {
     fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
   } catch (e) {}
@@ -647,7 +655,24 @@ function calculateDashboardData(filterUser) {
 }
 
 function parseJsonBody(req) {
-  return new Promise((resolve, reject) => {
+  if (req._parsedBody !== undefined && req._parsedBody !== null) {
+    return Promise.resolve(req._parsedBody);
+  }
+  if (req.body !== undefined && req.body !== null) {
+    if (typeof req.body === 'object') return Promise.resolve(req.body);
+    if (typeof req.body === 'string' && req.body.trim()) {
+      try {
+        return Promise.resolve(JSON.parse(req.body));
+      } catch (e) {
+        return Promise.resolve({});
+      }
+    }
+    return Promise.resolve({});
+  }
+  if (req.readableEnded) {
+    return Promise.resolve({});
+  }
+  return new Promise((resolve) => {
     let body = '';
     req.on('data', chunk => {
       body += chunk.toString();
@@ -656,10 +681,10 @@ function parseJsonBody(req) {
       try {
         resolve(body ? JSON.parse(body) : {});
       } catch (e) {
-        reject(e);
+        resolve({});
       }
     });
-    req.on('error', reject);
+    req.on('error', () => resolve({}));
   });
 }
 
@@ -668,28 +693,34 @@ function sendJson(res, statusCode, data) {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type'
+    'Access-Control-Allow-Headers': '*'
   });
   res.end(JSON.stringify(data));
 }
 
-const server = http.createServer(async (req, res) => {
-  const parsedUrl = url.parse(req.url, true);
-  const pathname = parsedUrl.pathname;
-  const method = req.method.toUpperCase();
-
-  if (isVercel && pathname.startsWith('/api/')) {
-    await syncFromBlob(true);
-  }
+async function handleRequest(req, res) {
+  const method = req.method ? req.method.toUpperCase() : 'GET';
 
   // CORS preflight
   if (method === 'OPTIONS') {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
+      'Access-Control-Allow-Headers': '*'
     });
     return res.end();
+  }
+
+  // Pre-parse request body immediately so stream is never drained or lost
+  if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
+    req._parsedBody = await parseJsonBody(req);
+  }
+
+  const parsedUrl = url.parse(req.url, true);
+  const pathname = parsedUrl.pathname;
+
+  if (isVercel && pathname.startsWith('/api/')) {
+    await syncFromBlob(false);
   }
 
   try {
@@ -1685,7 +1716,9 @@ const server = http.createServer(async (req, res) => {
     console.error("Server error:", err);
     sendJson(res, 500, { detail: err.message || "Internal server error" });
   }
-});
+}
+
+const server = http.createServer(handleRequest);
 
 if (require.main === module) {
   server.listen(PORT, '0.0.0.0', () => {
@@ -1694,3 +1727,6 @@ if (require.main === module) {
 }
 
 module.exports = server;
+module.exports.server = server;
+module.exports.handleRequest = handleRequest;
+module.exports.default = handleRequest;
