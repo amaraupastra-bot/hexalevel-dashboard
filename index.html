@@ -977,7 +977,10 @@
           </div>
           <div class="form-group" style="margin-bottom: 8px;">
             <label class="form-label">Password</label>
-            <input type="password" id="loginPass" class="form-control" required placeholder="Enter password">
+            <div style="position: relative; display: flex; align-items: center; width: 100%;">
+            <input type="password" id="loginPass" class="form-control" style="padding-right: 38px;" required placeholder="Enter password">
+            <button type="button" class="btn-toggle-pass" onclick="togglePasswordVisibility('loginPass', this)" title="Show/Hide Password" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; font-size: 15px; padding: 4px; color: #64748b; line-height: 1; user-select: none;">👁️</button>
+          </div>
           </div>
           
           <div style="display: flex; justify-content: flex-end; margin-bottom: 18px;">
@@ -1001,11 +1004,17 @@
           </div>
           <div class="form-group">
             <label class="form-label">New Password</label>
-            <input type="password" id="forgotNewPass" class="form-control" required placeholder="Enter new password">
+            <div style="position: relative; display: flex; align-items: center; width: 100%;">
+            <input type="password" id="forgotNewPass" class="form-control" style="padding-right: 38px;" required placeholder="Enter new password">
+            <button type="button" class="btn-toggle-pass" onclick="togglePasswordVisibility('forgotNewPass', this)" title="Show/Hide Password" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; font-size: 15px; padding: 4px; color: #64748b; line-height: 1; user-select: none;">👁️</button>
+          </div>
           </div>
           <div class="form-group">
             <label class="form-label">Confirm New Password</label>
-            <input type="password" id="forgotConfirmPass" class="form-control" required placeholder="Re-enter new password">
+            <div style="position: relative; display: flex; align-items: center; width: 100%;">
+            <input type="password" id="forgotConfirmPass" class="form-control" style="padding-right: 38px;" required placeholder="Re-enter new password">
+            <button type="button" class="btn-toggle-pass" onclick="togglePasswordVisibility('forgotConfirmPass', this)" title="Show/Hide Password" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; font-size: 15px; padding: 4px; color: #64748b; line-height: 1; user-select: none;">👁️</button>
+          </div>
           </div>
 
           <button type="submit" class="btn-login" style="background:#0d5c52; margin-top: 6px;">Update Password & Sign In</button>
@@ -1030,11 +1039,17 @@
           </div>
           <div class="form-group">
             <label class="form-label">Create Your Password</label>
-            <input type="password" id="setPassPassword" class="form-control" required placeholder="Choose a secure password">
+            <div style="position: relative; display: flex; align-items: center; width: 100%;">
+            <input type="password" id="setPassPassword" class="form-control" style="padding-right: 38px;" required placeholder="Choose a secure password">
+            <button type="button" class="btn-toggle-pass" onclick="togglePasswordVisibility('setPassPassword', this)" title="Show/Hide Password" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; font-size: 15px; padding: 4px; color: #64748b; line-height: 1; user-select: none;">👁️</button>
+          </div>
           </div>
           <div class="form-group">
             <label class="form-label">Confirm Password</label>
-            <input type="password" id="setPassConfirm" class="form-control" required placeholder="Re-enter password">
+            <div style="position: relative; display: flex; align-items: center; width: 100%;">
+            <input type="password" id="setPassConfirm" class="form-control" style="padding-right: 38px;" required placeholder="Re-enter password">
+            <button type="button" class="btn-toggle-pass" onclick="togglePasswordVisibility('setPassConfirm', this)" title="Show/Hide Password" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; font-size: 15px; padding: 4px; color: #64748b; line-height: 1; user-select: none;">👁️</button>
+          </div>
           </div>
 
           <button type="submit" class="btn-login" style="background:#0d5c52; margin-top: 6px;">Activate Account & Enter Dashboard</button>
@@ -1063,16 +1078,58 @@
           </div>
           <div class="form-group">
             <label class="form-label">New Password</label>
-            <input type="password" id="changeNewPass" class="form-control" required placeholder="Enter new password">
+            <div style="position: relative; display: flex; align-items: center; width: 100%;">
+            <input type="password" id="changeNewPass" class="form-control" style="padding-right: 38px;" required placeholder="Enter new password">
+            <button type="button" class="btn-toggle-pass" onclick="togglePasswordVisibility('changeNewPass', this)" title="Show/Hide Password" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; font-size: 15px; padding: 4px; color: #64748b; line-height: 1; user-select: none;">👁️</button>
+          </div>
           </div>
           <div class="form-group">
             <label class="form-label">Confirm New Password</label>
-            <input type="password" id="changeConfirmPass" class="form-control" required placeholder="Confirm new password">
+            <div style="position: relative; display: flex; align-items: center; width: 100%;">
+            <input type="password" id="changeConfirmPass" class="form-control" style="padding-right: 38px;" required placeholder="Confirm new password">
+            <button type="button" class="btn-toggle-pass" onclick="togglePasswordVisibility('changeConfirmPass', this)" title="Show/Hide Password" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; font-size: 15px; padding: 4px; color: #64748b; line-height: 1; user-select: none;">👁️</button>
+          </div>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-light" onclick="closeModal('changePasswordModal')">Cancel</button>
           <button type="submit" class="btn btn-green">Save Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: CHANGE ACCOUNT EMAIL ADDRESS                           -->
+  <!-- ============================================================== -->
+  <div id="changeEmailModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 440px;">
+      <div class="modal-header" style="background: linear-gradient(135deg, #073831, #0d5c52); color: #fff;">
+        <span>✉️ Change Account Email Address</span>
+        <button type="button" style="background:none; border:none; color:#fff; font-size:22px; cursor:pointer;" onclick="closeModal('changeEmailModal')">&times;</button>
+      </div>
+      <form onsubmit="handleSaveEmailChange(event)" style="padding: 24px;">
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label" style="font-weight: 700; font-size: 12.5px;">Current Email Address</label>
+          <input type="text" id="changeEmailCurrent" class="form-control" readonly style="background: #f1f5f9; color: #64748b; font-family: monospace;">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label" style="font-weight: 700; font-size: 12.5px;">New Email Address</label>
+          <input type="email" id="changeEmailNew" class="form-control" required placeholder="e.g. yourname@hexalevel.com" style="text-transform:none;">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 18px;">
+          <label class="form-label" style="font-weight: 700; font-size: 12.5px;">Current Password (to confirm change)</label>
+          <div style="position: relative; display: flex; align-items: center; width: 100%;">
+            <input type="password" id="changeEmailPass" class="form-control" required placeholder="Enter password to verify" style="padding-right: 38px;">
+            <button type="button" class="btn-toggle-pass" onclick="togglePasswordVisibility('changeEmailPass', this)" title="Show/Hide Password" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; font-size: 15px; padding: 4px; color: #64748b; line-height: 1; user-select: none;">👁️</button>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('changeEmailModal')">Cancel</button>
+          <button type="submit" class="btn btn-green" style="font-weight: 700;">Update Email</button>
         </div>
       </form>
     </div>
@@ -1210,6 +1267,7 @@
         
         
         
+        <button class="btn-change-pass" onclick="openChangeEmailModal()" title="Change Account Email" style="background:#f0fdf4; color:#15803d; border-color:#bbf7d0;"><span>✉️</span> Change Email</button>
         <button class="btn-change-pass" onclick="openChangePasswordModal()" title="Change Account Password"><span>🔑</span> Change Password</button>
         <button class="btn-logout" onclick="logoutUser()">Logout</button>
       </div>
@@ -2415,7 +2473,10 @@
           <label class="form-label" style="font-weight: 700; font-size: 12.5px;">
             Gmail App Password (16-Character Code)
           </label>
-          <input type="password" id="smtpSenderPass" class="form-control" placeholder="Paste 16-letter App Password (e.g. abcd efgh ijkl mnop)">
+          <div style="position: relative; display: flex; align-items: center; width: 100%;">
+            <input type="password" id="smtpSenderPass" class="form-control" style="padding-right: 38px;" placeholder="Paste 16-letter App Password (e.g. abcd efgh ijkl mnop)">
+            <button type="button" class="btn-toggle-pass" onclick="togglePasswordVisibility('smtpSenderPass', this)" title="Show/Hide Password" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; font-size: 15px; padding: 4px; color: #64748b; line-height: 1; user-select: none;">👁️</button>
+          </div>
           
           <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 10px 12px; margin-top: 6px; font-size: 11.5px; color: #166534; line-height: 1.5;">
             <strong>💡 How to get Gmail App Password in 1 minute:</strong><br>
@@ -2740,6 +2801,61 @@
       } catch (err) {
         console.error(err);
         alert('Error connecting to server.');
+      }
+    }
+
+    
+    function togglePasswordVisibility(inputId, btn) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        if (btn) btn.innerText = '🙈';
+        if (btn) btn.setAttribute('title', 'Hide Password');
+      } else {
+        input.type = 'password';
+        if (btn) btn.innerText = '👁️';
+        if (btn) btn.setAttribute('title', 'Show Password');
+      }
+    }
+
+    function openChangeEmailModal() {
+      const currentEmail = localStorage.getItem('hl_email') || '';
+      document.getElementById('changeEmailCurrent').value = currentEmail || 'admin@hexalevel.com';
+      document.getElementById('changeEmailNew').value = '';
+      document.getElementById('changeEmailPass').value = '';
+      document.getElementById('changeEmailModal').classList.add('active');
+    }
+
+    async function handleSaveEmailChange(e) {
+      e.preventDefault();
+      const current_email = document.getElementById('changeEmailCurrent').value.trim();
+      const new_email = document.getElementById('changeEmailNew').value.trim().toLowerCase();
+      const password = document.getElementById('changeEmailPass').value.trim();
+
+      if (!new_email || !new_email.includes('@')) {
+        alert('Please enter a valid new email address.');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/auth/change-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ current_email, new_email, password, user: currentUser })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          localStorage.setItem('hl_email', new_email);
+          closeModal('changeEmailModal');
+          showToast('Email address updated successfully!', '✉️');
+          loadData();
+        } else {
+          alert(data.detail || 'Failed to update email.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Server error while updating email.');
       }
     }
 

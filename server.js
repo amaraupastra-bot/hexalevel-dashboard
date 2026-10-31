@@ -12,6 +12,48 @@ const isVercel = Boolean(process.env.VERCEL);
 const DATA_FILE = isVercel ? path.join('/tmp', 'dashboard_data.json') : path.join(BASE_DIR, 'dashboard_data.json');
 const EXCEL_PATH = path.join(BASE_DIR, 'Hexalevel_Financial_Management_Dashboard.xlsx');
 
+const BLOB_URL = 'https://chyqewr2sbowut1m.public.blob.vercel-storage.com/dashboard_data.json';
+const BLOB_TOKEN = process.env.PUBLIC_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN;
+
+let memoryData = null;
+let lastBlobSync = 0;
+
+async function syncFromBlob() {
+  if (!isVercel || !BLOB_TOKEN) return;
+  if (memoryData && (Date.now() - lastBlobSync < 3000)) return;
+  try {
+    const res = await fetch(BLOB_URL + '?t=' + Date.now(), { cache: 'no-store' });
+    if (res.ok) {
+      const remoteData = await res.json();
+      if (remoteData && remoteData.users && Array.isArray(remoteData.users)) {
+        memoryData = remoteData;
+        lastBlobSync = Date.now();
+        try {
+          fs.writeFileSync(DATA_FILE, JSON.stringify(remoteData, null, 2), 'utf-8');
+        } catch (e) {}
+      }
+    }
+  } catch (err) {
+    console.error('Error syncing from Vercel Blob:', err.message);
+  }
+}
+
+async function persistToBlob(data) {
+  if (!isVercel || !BLOB_TOKEN) return;
+  try {
+    const { put } = require('@vercel/blob');
+    await put('dashboard_data.json', JSON.stringify(data, null, 2), {
+      access: 'public',
+      addRandomSuffix: false,
+      allowOverwrite: true,
+      token: BLOB_TOKEN
+    });
+  } catch (err) {
+    console.error('Error persisting to Vercel Blob:', err.message);
+  }
+}
+
+
 const USERS_DB = {
   "admin@hexalevel.com": { name: "Admin", passwords: ["admin", "admin123"] }
 };
@@ -147,6 +189,9 @@ async function sendInvitationEmail(user, inviteLink, settings) {
 }
 
 function loadData() {
+  if (memoryData && memoryData.users && memoryData.users.length > 0) {
+    return memoryData;
+  }
   if (isVercel && !fs.existsSync(DATA_FILE)) {
     try {
       const defaultRaw = fs.readFileSync(path.join(BASE_DIR, 'dashboard_data.json'), 'utf-8');
@@ -179,11 +224,18 @@ function loadData() {
       }
     ];
   }
+  memoryData = data;
   return data;
 }
 
 function saveData(data) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  memoryData = data;
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (e) {}
+  if (isVercel) {
+    persistToBlob(data);
+  }
 }
 
 function logActivity(data, user, action, tab, details) {
@@ -619,6 +671,7 @@ function sendJson(res, statusCode, data) {
 }
 
 const server = http.createServer(async (req, res) => {
+  if (isVercel) await syncFromBlob();
   const parsedUrl = url.parse(req.url, true);
   const pathname = parsedUrl.pathname;
   const method = req.method.toUpperCase();
@@ -861,6 +914,50 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, {
         status: "success",
         message: "Password updated successfully!"
+      });
+    }
+
+    // 3dd. Change Account Email Address
+    if (pathname === '/api/auth/change-email' && method === 'POST') {
+      const body = await parseJsonBody(req);
+      const query = (body.current_email || body.user || '').trim().toLowerCase();
+      const newEmail = (body.new_email || '').trim().toLowerCase();
+      const password = (body.password || '').trim();
+
+      if (!newEmail || !newEmail.includes('@')) {
+        return sendJson(res, 400, { detail: "Please provide a valid new email address." });
+      }
+
+      const data = loadData();
+      const users = data.users || [];
+
+      let user = users.find(u => (u.email || '').toLowerCase() === query || (u.name || '').toLowerCase() === query);
+      if (!user) {
+        return sendJson(res, 404, { detail: "User account not found." });
+      }
+
+      const validPasswords = [user.password, ...(user.passwords || [])].filter(Boolean);
+      if (user.role === 'Administrator' || user.email === 'admin@hexalevel.com') {
+        validPasswords.push('admin', 'admin123');
+      }
+      if (!validPasswords.includes(password)) {
+        return sendJson(res, 401, { detail: "Incorrect password. Please verify your current password to change email." });
+      }
+
+      const existing = users.find(u => u.id !== user.id && (u.email || '').toLowerCase() === newEmail);
+      if (existing) {
+        return sendJson(res, 400, { detail: "This email address is already in use by another member." });
+      }
+
+      const oldEmail = user.email;
+      user.email = newEmail;
+      logActivity(data, user.name, "CHANGE_EMAIL", "Profile", `${user.name} changed account email from ${oldEmail} to ${newEmail}.`);
+      saveData(data);
+
+      return sendJson(res, 200, {
+        status: "success",
+        message: "Email address updated successfully!",
+        email: newEmail
       });
     }
 
