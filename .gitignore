@@ -4,6 +4,8 @@ __pycache__/
 *.pyd
 .venv/
 env/
+node_modules/
+*.bak
 analysis_output.txt
 clean_inspection.txt
 .DS_Store

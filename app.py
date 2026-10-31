@@ -208,8 +208,11 @@ def get_dashboard_data(filter_user: Optional[str] = None):
     old_purchases = sum(e["price"] for e in expenses_old)
     old_send = sum(s["amount"] for s in send_money_old)
     old_net = old_co - old_purchases - old_send
-    old_projects_count = len(split_old)
-    old_received_count = sum(1 for x in split_old if x["status"] == "Received")
+    old_projects_list = [p for p in projects if p.get("period") == "old"]
+    old_projects_count = len(old_projects_list)
+    old_received_count = sum(1 for x in old_projects_list if (x.get("status") or "").lower() == "received")
+    old_pending_count = sum(1 for x in old_projects_list if (x.get("status") or "").lower() == "pending")
+    old_pending_amount = ", ".join(f"{p.get('currency', 'USD')} {p.get('amount', 0):,}" for p in old_projects_list if (p.get("status") or "").lower() == "pending") or "0"
 
     # New Split Totals
     new_rev = sum(x["amount"] for x in split_new if x["status"] == "Received")
@@ -218,13 +221,18 @@ def get_dashboard_data(filter_user: Optional[str] = None):
     new_purchases = sum(e["price"] for e in expenses_new)
     new_send = sum(s["amount"] for s in send_money_new)
     new_net = new_co - new_purchases - new_send
-    new_projects_count = len(split_new)
-    new_received_count = sum(1 for x in split_new if x["status"] == "Received")
+    new_projects_list = [p for p in projects if p.get("period") == "new"]
+    new_projects_count = len(new_projects_list)
+    new_received_count = sum(1 for x in new_projects_list if (x.get("status") or "").lower() == "received")
+    new_pending_count = sum(1 for x in new_projects_list if (x.get("status") or "").lower() == "pending")
+    new_pending_amount = ", ".join(f"{p.get('currency', 'PKR')} {p.get('amount', 0):,}" for p in new_projects_list if (p.get("status") or "").lower() == "pending") or "0"
 
     all_rev = old_rev + new_rev
     all_net = old_net + new_net
-    all_projects_count = old_projects_count + new_projects_count
-    all_received_count = old_received_count + new_received_count
+    all_projects_count = len(projects)
+    all_received_count = sum(1 for x in projects if (x.get("status") or "").lower() == "received")
+    all_pending_count = sum(1 for x in projects if (x.get("status") or "").lower() == "pending")
+    all_pending_amount = ", ".join(f"{p.get('currency', 'USD')} {p.get('amount', 0):,} ({p.get('client', '')})" for p in projects if (p.get("status") or "").lower() == "pending") or "0"
 
     # Scenario C Aggregates
     sc_total_amt = sum(c["amount"] for c in scenario_c if c["status"] == "Received")
@@ -239,9 +247,6 @@ def get_dashboard_data(filter_user: Optional[str] = None):
     sh_old_direct = sum(x["team"] / 2 for x in split_old if x["status"] == "Received")
     sh_new_direct = sum(x.get("shaista", 0) for x in split_new if x["status"] == "Received")
     sh_total_direct = sh_old_direct + sh_new_direct
-    # Surplus from company skips is credited ONLY to members who actually worked on that project
-    sh_sc_surplus = sum(c["skip_to_co"] / 2 for c in scenario_c if c["status"] == "Received" and c.get("shaista", 0) > 0)
-    sh_net = sh_total_direct + sh_sc_surplus
     sh_worked_count = len(split_old) + sum(1 for x in split_new if x.get("shaista", 0) > 0)
     sh_skipped_count = sum(1 for c in scenario_c if c.get("skip_member", "").lower() == "shaista")
     sh_skipped_deduction = sum(c["amount"] * (7/30) for c in scenario_c if c.get("skip_member", "").lower() == "shaista")
@@ -250,8 +255,6 @@ def get_dashboard_data(filter_user: Optional[str] = None):
     am_old_direct = sum(x["team"] / 2 for x in split_old if x["status"] == "Received")
     am_new_direct = sum(x.get("amara", 0) for x in split_new if x["status"] == "Received")
     am_total_direct = am_old_direct + am_new_direct
-    am_sc_surplus = sum(c["skip_to_co"] / 2 for c in scenario_c if c["status"] == "Received" and c.get("amara", 0) > 0)
-    am_net = am_total_direct + am_sc_surplus
     am_worked_count = len(split_old) + sum(1 for x in split_new if x.get("amara", 0) > 0)
     am_skipped_count = sum(1 for c in scenario_c if c.get("skip_member", "").lower() == "amara")
     am_skipped_deduction = sum(c["amount"] * (7/30) for c in scenario_c if c.get("skip_member", "").lower() == "amara")
@@ -259,41 +262,9 @@ def get_dashboard_data(filter_user: Optional[str] = None):
     # 3. Urooj
     ur_new_direct = sum(x.get("urooj", 0) for x in split_new if x["status"] == "Received")
     ur_total_direct = ur_new_direct
-    ur_sc_surplus = sum(c["skip_to_co"] / 2 for c in scenario_c if c["status"] == "Received" and c.get("urooj", 0) > 0)
-    ur_net = ur_total_direct + ur_sc_surplus
     ur_worked_count = sum(1 for x in split_new if x.get("urooj", 0) > 0)
     ur_skipped_count = sum(1 for c in scenario_c if c.get("skip_member", "").lower() == "urooj")
     ur_skipped_deduction = sum(c["amount"] * (7/30) for c in scenario_c if c.get("skip_member", "").lower() == "urooj")
-
-    partners = {
-        "shaista": {
-            "name": "Shaista",
-            "direct": sh_total_direct,
-            "surplus": sh_sc_surplus,
-            "total_net": sh_net,
-            "projects_worked": sh_worked_count,
-            "projects_skipped": sh_skipped_count,
-            "skipped_deduction": sh_skipped_deduction
-        },
-        "amara": {
-            "name": "Amara",
-            "direct": am_total_direct,
-            "surplus": am_sc_surplus,
-            "total_net": am_net,
-            "projects_worked": am_worked_count,
-            "projects_skipped": am_skipped_count,
-            "skipped_deduction": am_skipped_deduction
-        },
-        "urooj": {
-            "name": "Urooj",
-            "direct": ur_total_direct,
-            "surplus": ur_sc_surplus,
-            "total_net": ur_net,
-            "projects_worked": ur_worked_count,
-            "projects_skipped": ur_skipped_count,
-            "skipped_deduction": ur_skipped_deduction
-        }
-    }
 
     # Dedicated Company Financial Statement & Waterfall
     new_co_base = sum(x["amount"] * 0.30 for x in split_new if x["status"] == "Received")
@@ -302,6 +273,61 @@ def get_dashboard_data(filter_user: Optional[str] = None):
     total_send = old_send + new_send
     total_deductions = total_purchases + total_send
     company_net = total_gross_co - total_deductions
+
+    # Company Savings Allocation (Asal Net Profit in Company Tijori):
+    # Old Period Net (50/50 Model): Shaista 50%, Amara 50%, Urooj 0%
+    sh_old_savings = old_net * 0.50
+    am_old_savings = old_net * 0.50
+    ur_old_savings = 0.0
+
+    # New Period Net (30/70 Model): Shared equally among all 3 members (1/3 each)
+    sh_new_savings = new_net / 3.0
+    am_new_savings = new_net / 3.0
+    ur_new_savings = new_net / 3.0
+
+    # Total Company Savings (Asal Net Profit in Company Tijori)
+    sh_company_savings = sh_old_savings + sh_new_savings
+    am_company_savings = am_old_savings + am_new_savings
+    ur_company_savings = ur_old_savings + ur_new_savings
+
+    partners = {
+        "shaista": {
+            "name": "Shaista",
+            "direct": sh_total_direct,
+            "old_savings": sh_old_savings,
+            "new_savings": sh_new_savings,
+            "company_savings": sh_company_savings,
+            "settlement_payable": sh_company_savings,
+            "total_financial_value": sh_total_direct + sh_company_savings,
+            "projects_worked": sh_worked_count,
+            "projects_skipped": sh_skipped_count,
+            "skipped_deduction": sh_skipped_deduction
+        },
+        "amara": {
+            "name": "Amara",
+            "direct": am_total_direct,
+            "old_savings": am_old_savings,
+            "new_savings": am_new_savings,
+            "company_savings": am_company_savings,
+            "settlement_payable": am_company_savings,
+            "total_financial_value": am_total_direct + am_company_savings,
+            "projects_worked": am_worked_count,
+            "projects_skipped": am_skipped_count,
+            "skipped_deduction": am_skipped_deduction
+        },
+        "urooj": {
+            "name": "Urooj",
+            "direct": ur_total_direct,
+            "old_savings": ur_old_savings,
+            "new_savings": ur_new_savings,
+            "company_savings": ur_company_savings,
+            "settlement_payable": ur_company_savings,
+            "total_financial_value": ur_total_direct + ur_company_savings,
+            "projects_worked": ur_worked_count,
+            "projects_skipped": ur_skipped_count,
+            "skipped_deduction": ur_skipped_deduction
+        }
+    }
 
     company_statement = {
         "old_co_share": old_co,
@@ -312,6 +338,11 @@ def get_dashboard_data(filter_user: Optional[str] = None):
         "send_money_deducted": total_send,
         "total_deductions": total_deductions,
         "overall_net_profit": company_net,
+        "old_co_net": old_net,
+        "new_co_net": new_net,
+        "allocated_shaista": sh_company_savings,
+        "allocated_amara": am_company_savings,
+        "allocated_urooj": ur_company_savings,
         "total_revenue": all_rev,
         "net_profit_margin_pct": round((company_net / all_rev * 100) if all_rev > 0 else 0, 2)
     }
@@ -327,8 +358,8 @@ def get_dashboard_data(filter_user: Optional[str] = None):
         "partner_earnings": {
             "labels": ["Shaista", "Amara", "Urooj"],
             "direct": [sh_total_direct, am_total_direct, ur_total_direct],
-            "surplus": [sh_sc_surplus, am_sc_surplus, ur_sc_surplus],
-            "net": [sh_net, am_net, ur_net],
+            "savings": [sh_company_savings, am_company_savings, ur_company_savings],
+            "total_value": [sh_total_direct + sh_company_savings, am_total_direct + am_company_savings, ur_total_direct + ur_company_savings],
             "deductions": [sh_skipped_deduction, am_skipped_deduction, ur_skipped_deduction]
         },
         "revenue_breakdown": {
