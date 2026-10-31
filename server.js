@@ -57,6 +57,133 @@ async function persistToBlob(data) {
     console.error('❌ Error persisting to Vercel Blob:', err.message);
   }
 }
+function getEffectiveBaseUrl(req, data) {
+  const forwardedProto = req && req.headers && req.headers['x-forwarded-proto'];
+  const forwardedHost = req && req.headers && req.headers['x-forwarded-host'];
+  const reqHost = forwardedHost || (req && req.headers && req.headers.host);
+
+  if (reqHost && !reqHost.includes('localhost') && !reqHost.includes('127.0.0.1')) {
+    const proto = forwardedProto || 'https';
+    return `${proto}://${reqHost}`;
+  }
+
+  if (data && data.email_settings && data.email_settings.base_url && data.email_settings.base_url.trim()) {
+    const cfg = data.email_settings.base_url.trim().replace(/\/$/, '');
+    if (!cfg.includes('localhost') && !cfg.includes('127.0.0.1')) {
+      return cfg;
+    }
+  }
+
+  if (isVercel) {
+    return 'https://hexalevel.vercel.app';
+  }
+
+  const proto = forwardedProto || 'http';
+  return `${proto}://${reqHost || 'localhost:8000'}`;
+}
+
+function getEmailTransporter(settings) {
+  if (!settings || !settings.sender_email || !settings.sender_password) {
+    return null;
+  }
+  const port = parseInt(settings.smtp_port) || 465;
+  const isSecure = (settings.smtp_secure !== undefined) ? Boolean(settings.smtp_secure) : (port === 465);
+
+  return nodemailer.createTransport({
+    host: settings.smtp_host || 'smtp.hostinger.com',
+    port: port,
+    secure: isSecure,
+    auth: {
+      user: settings.sender_email.trim(),
+      pass: settings.sender_password.trim()
+    },
+    tls: {
+      rejectUnauthorized: false
+    }
+  });
+}
+
+async function sendInvitationEmail(user, inviteLink, settings) {
+  const transporter = getEmailTransporter(settings);
+  if (!transporter) {
+    return {
+      sent: false,
+      reason: 'SMTP settings not configured. Please configure your email in Email Settings.'
+    };
+  }
+
+  const senderName = settings.sender_name || 'HEXALEVEL Dashboard';
+  const senderEmail = settings.sender_email.trim();
+
+  const mailHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; }
+    .wrapper { width: 100%; background-color: #f1f5f9; padding: 36px 12px; }
+    .content-table { max-width: 560px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border-spacing: 0; box-shadow: 0 10px 25px rgba(0,0,0,0.08); border: 1px solid #e2e8f0; }
+    .header { background: linear-gradient(135deg, #073831 0%, #0d5c52 100%); padding: 30px 24px; text-align: center; }
+    .header h1 { margin: 0; color: #ffffff; font-size: 22px; font-weight: 800; letter-spacing: 1px; }
+    .header p { margin: 6px 0 0 0; color: #99f6e4; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .body { padding: 32px 28px; font-size: 14.5px; line-height: 1.6; color: #334155; }
+    .btn-container { text-align: center; margin: 26px 0; }
+    .btn-cta { display: inline-block; background-color: #0d5c52; color: #ffffff !important; padding: 13px 30px; border-radius: 8px; font-size: 14.5px; font-weight: 700; text-decoration: none; }
+    .link-box { background-color: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 6px; padding: 10px 12px; font-family: monospace; font-size: 12px; color: #0284c7; word-break: break-all; margin-top: 8px; }
+    .footer { background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 18px 24px; text-align: center; font-size: 12px; color: #64748b; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <table class="content-table" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td class="header">
+          <h1>HEXALEVEL</h1>
+          <p>Financial Management & Revenue Distribution</p>
+        </td>
+      </tr>
+      <tr>
+        <td class="body">
+          <h2 style="margin-top: 0; color: #0f172a; font-size: 18px;">Welcome, ${user.name}!</h2>
+          <p>You have been invited by the Administrator to access the <strong>HEXALEVEL Financial Management Dashboard</strong> as an authorized member.</p>
+          <p>Please click the button below to create your secure password and activate your account:</p>
+          
+          <div class="btn-container">
+            <a href="${inviteLink}" class="btn-cta" target="_blank">🔐 Set Up My Password</a>
+          </div>
+
+          <p style="font-size: 12.5px; color: #64748b; margin-top: 22px;">If the button above does not open, copy and paste this link into your web browser:</p>
+          <div class="link-box">${inviteLink}</div>
+
+          <p style="font-size: 12px; color: #94a3b8; margin-top: 24px;">
+            This invitation was sent exclusively to <strong>${user.email}</strong>.
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td class="footer">
+          © 2026 HEXALEVEL • Financial Management System
+        </td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>`;
+
+  try {
+    const info = await transporter.sendMail({
+      from: `"${senderName}" <${senderEmail}>`,
+      to: user.email,
+      subject: `Action Required: Set Up Your Hexalevel Dashboard Account`,
+      text: `Hello ${user.name},\n\nYou have been invited to the Hexalevel Financial Management Dashboard.\n\nPlease set your password using this link:\n${inviteLink}\n\nHexalevel Financial Management`,
+      html: mailHtml
+    });
+    return { sent: true, messageId: info.messageId };
+  } catch (err) {
+    return { sent: false, error: err.message };
+  }
+}
+
 function loadData() {
   if (memoryData && memoryData.users && memoryData.users.length > 0) {
     return memoryData;
