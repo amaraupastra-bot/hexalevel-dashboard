@@ -20,11 +20,16 @@ let lastBlobSync = 0;
 
 async function syncFromBlob(force = false) {
   if (!isVercel || !BLOB_TOKEN) return;
-  if (!force && memoryData && (Date.now() - lastBlobSync < 1500)) return;
+  if (!force && memoryData && (Date.now() - lastBlobSync < 500)) return;
   try {
-    const res = await fetch(BLOB_URL + '?t=' + Date.now(), {
+    const freshUrl = `${BLOB_URL}?download=1&_nocache=${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const res = await fetch(freshUrl, {
       cache: 'no-store',
-      headers: { 'Cache-Control': 'no-cache, no-store' }
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
     });
     if (res.ok) {
       const remoteData = await res.json();
@@ -49,8 +54,10 @@ async function persistToBlob(data) {
       access: 'public',
       addRandomSuffix: false,
       allowOverwrite: true,
-      token: BLOB_TOKEN
+      token: BLOB_TOKEN,
+      cacheControlMaxAge: 0
     });
+    memoryData = data;
     lastBlobSync = Date.now();
     console.log('✅ Successfully persisted to Vercel Blob:', res.url);
   } catch (err) {
@@ -667,10 +674,13 @@ function sendJson(res, statusCode, data) {
 }
 
 const server = http.createServer(async (req, res) => {
-  if (isVercel) await syncFromBlob();
   const parsedUrl = url.parse(req.url, true);
   const pathname = parsedUrl.pathname;
   const method = req.method.toUpperCase();
+
+  if (isVercel && pathname.startsWith('/api/')) {
+    await syncFromBlob(true);
+  }
 
   // CORS preflight
   if (method === 'OPTIONS') {
