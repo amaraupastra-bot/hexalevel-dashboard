@@ -685,6 +685,70 @@
   "scenario_c": [],
   "activity_logs": [
     {
+      "id": "ACT-018",
+      "timestamp": "2026-11-05 16:42:40",
+      "user": "Admin",
+      "action": "INVITE_USER",
+      "tab": "Users Management",
+      "details": "Invitation notification for Amara (ammarachaudhary986@gmail.com). Real Email Sent: YES"
+    },
+    {
+      "id": "ACT-017",
+      "timestamp": "2026-11-05 16:37:51",
+      "user": "Admin",
+      "action": "DELETE_USER",
+      "tab": "Users Management",
+      "details": "Admin deleted user account \"Urooj\" (urooj@hexalevel.com)."
+    },
+    {
+      "id": "ACT-016",
+      "timestamp": "2026-11-05 16:37:44",
+      "user": "Admin",
+      "action": "DELETE_USER",
+      "tab": "Users Management",
+      "details": "Admin deleted user account \"Amara\" (ammarachaudhary986@gmail.com)."
+    },
+    {
+      "id": "ACT-015",
+      "timestamp": "2026-11-05 16:35:48",
+      "user": "Admin",
+      "action": "USER_LOGIN",
+      "tab": "Authentication",
+      "details": "Admin logged in with email admin@hexalevel.com."
+    },
+    {
+      "id": "ACT-014",
+      "timestamp": "2026-11-05 16:27:56",
+      "user": "Urooj",
+      "action": "USER_LOGIN",
+      "tab": "Authentication",
+      "details": "Urooj logged in with email urooj@hexalevel.com."
+    },
+    {
+      "id": "ACT-013",
+      "timestamp": "2026-11-05 16:27:56",
+      "user": "Shaista",
+      "action": "USER_LOGIN",
+      "tab": "Authentication",
+      "details": "Shaista logged in with email shaista@hexalevel.com."
+    },
+    {
+      "id": "ACT-012",
+      "timestamp": "2026-11-05 16:27:55",
+      "user": "Amara",
+      "action": "USER_LOGIN",
+      "tab": "Authentication",
+      "details": "Amara logged in with email ammarachaudhary986@gmail.com."
+    },
+    {
+      "id": "ACT-011",
+      "timestamp": "2026-11-05 16:27:54",
+      "user": "Admin",
+      "action": "USER_LOGIN",
+      "tab": "Authentication",
+      "details": "Admin logged in with email admin@hexalevel.com."
+    },
+    {
       "id": "ACT-010",
       "timestamp": "2026-10-31 16:34:15",
       "user": "Admin",
@@ -777,55 +841,21 @@
       ],
       "role": "Administrator",
       "created_at": "2026-10-31 12:00:00",
-      "last_login": "2026-10-31 16:31:55",
-      "login_count": 2,
+      "last_login": "2026-11-05 16:35:48",
+      "login_count": 4,
       "status": "Active"
     },
     {
       "id": "USR-002",
       "name": "Amara",
       "email": "ammarachaudhary986@gmail.com",
-      "password": "Amara@123",
-      "passwords": [
-        "Amara@123",
-        "admin",
-        "admin123"
-      ],
-      "created_at": "2026-10-31 19:33:47",
+      "password": "",
+      "passwords": [],
+      "created_at": "2026-11-05 16:42:39",
       "last_login": "—",
       "login_count": 0,
-      "status": "Active",
-      "invite_token": "217c939d081111d9e1d7e6093bcd31da",
-      "role": "Member"
-    },
-    {
-      "id": "USR-003",
-      "name": "Shaista",
-      "email": "shaista@hexalevel.com",
-      "password": "ShaistaPassword@123",
-      "passwords": [
-        "ShaistaPassword@123"
-      ],
-      "created_at": "2026-10-31 16:02:13",
-      "last_login": "2026-10-31 16:05:04",
-      "login_count": 1,
-      "status": "Active",
-      "invite_token": "68c220e7329fc8fea143cfb778f8f880",
-      "role": "Member"
-    },
-    {
-      "id": "USR-004",
-      "name": "Urooj",
-      "email": "urooj@hexalevel.com",
-      "password": "UroojPassword@123",
-      "passwords": [
-        "UroojPassword@123"
-      ],
-      "created_at": "2026-10-31 16:11:04",
-      "last_login": "2026-10-31 16:19:39",
-      "login_count": 2,
-      "status": "Active",
-      "invite_token": "900dff3cee092fcb58d37e8e6129cc15",
+      "status": "Pending Password Setup",
+      "invite_token": "c99244a0df4fea27ddf227807dac466e",
       "role": "Member"
     }
   ],
@@ -1020,6 +1050,6 @@
     "smtp_secure": true,
     "base_url": "https://hexalevel.vercel.app"
   },
-  "_version": 2,
-  "_updatedAt": 1793895822994
+  "_version": 15,
+  "_updatedAt": 1793898772892
 }

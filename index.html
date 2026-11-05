@@ -1263,7 +1263,7 @@
       </div>
       <div class="user-session-bar">
         <span style="font-size:12px; font-weight:700; color:#475569;">Logged in as:</span>
-        <span id="currentUserName" class="user-badge-current">👤 Amara</span>
+        <span id="currentUserName" class="user-badge-current">👤 Admin</span>
         
         
         
@@ -2653,9 +2653,80 @@
     }
 
     let charts = {};
-    let currentUser = localStorage.getItem('hl_user') || 'Amara';
+    let currentUser = localStorage.getItem('hl_user') || '';
+    let currentUserRole = localStorage.getItem('hl_role') || 'Member';
     let activityFilterMode = 'me'; // 'me' or 'all'
     let adminSelectedUser = 'all';
+
+    // Global fetch interceptor to attach auth headers and detect account revocation instantly
+    const origFetch = window.fetch;
+    window.fetch = async function(input, init) {
+      init = init || {};
+      init.headers = init.headers || {};
+      const curUser = currentUser || localStorage.getItem('hl_user') || '';
+      const curEmail = localStorage.getItem('hl_email') || '';
+      if (curUser) {
+        if (init.headers instanceof Headers) {
+          if (!init.headers.has('X-User-Name')) init.headers.set('X-User-Name', curUser);
+          if (curEmail && !init.headers.has('X-User-Email')) init.headers.set('X-User-Email', curEmail);
+        } else if (Array.isArray(init.headers)) {
+          init.headers.push(['X-User-Name', curUser]);
+          if (curEmail) init.headers.push(['X-User-Email', curEmail]);
+        } else {
+          init.headers['X-User-Name'] = curUser;
+          if (curEmail) init.headers['X-User-Email'] = curEmail;
+        }
+      }
+      const response = await origFetch(input, init);
+
+      if (response.status === 401 && typeof input === 'string' && input.startsWith('/api/') && !input.startsWith('/api/auth/login')) {
+        try {
+          const clone = response.clone();
+          const body = await clone.json();
+          if (body && (body.status === 'revoked' || body.revoked)) {
+            handleRevocation(body.detail || "Your account access has been revoked or removed by the Administrator.");
+          }
+        } catch(e) {}
+      }
+      return response;
+    };
+
+    function handleRevocation(message) {
+      localStorage.removeItem('hl_user');
+      localStorage.removeItem('hl_email');
+      localStorage.removeItem('hl_role');
+      currentUser = '';
+      
+      // Close all open modals
+      document.querySelectorAll('.modal-backdrop, .modal, [id$="Modal"]').forEach(el => {
+        if (el.style) el.style.display = 'none';
+      });
+
+      // Show login overlay
+      const loginOverlay = document.getElementById('loginScreen');
+      if (loginOverlay) {
+        loginOverlay.style.display = 'flex';
+        switchAuthView('login');
+      }
+
+      alert('🔒 Access Revoked:\n\n' + (message || "Your account access has been revoked or removed by the Administrator."));
+    }
+
+    async function validateSessionWithServer() {
+      const u = currentUser || localStorage.getItem('hl_user');
+      if (!u) return;
+      if (u.toLowerCase() === 'admin') return; // Admin is always valid
+      try {
+        const e = localStorage.getItem('hl_email') || '';
+        const res = await origFetch(`/api/auth/verify-session?user=${encodeURIComponent(u)}&email=${encodeURIComponent(e)}`);
+        if (res.status === 401) {
+          const data = await res.json().catch(() => ({}));
+          handleRevocation(data.detail || "Your account access has been revoked or removed by the Administrator.");
+        }
+      } catch (err) {
+        console.error("Session verification error:", err);
+      }
+    }
 
     function fmt(n) {
       if (n === null || n === undefined || isNaN(n)) return '0.00';
@@ -2665,18 +2736,36 @@
     // AUTHENTICATION LOGIC
     function checkAuth() {
       const saved = localStorage.getItem('hl_user');
+      const savedRole = localStorage.getItem('hl_role');
       const loginOverlay = document.getElementById('loginScreen');
       if (saved) {
         currentUser = saved;
+        currentUserRole = savedRole || (saved.toLowerCase() === 'admin' ? 'Administrator' : 'Member');
         document.getElementById('currentUserName').innerText = '👤 ' + currentUser;
-      const mBadge = document.getElementById('mobileUserBadge');
-      if (mBadge) mBadge.innerText = '👤 ' + currentUser;
+        const mBadge = document.getElementById('mobileUserBadge');
+        if (mBadge) mBadge.innerText = '👤 ' + currentUser;
         loginOverlay.style.display = 'none';
+
+        // Restrict Users Management tab to Administrator only
+        const usersMenuItem = document.getElementById('menuItemUsers');
+        if (usersMenuItem) {
+          usersMenuItem.style.display = (currentUser === 'Admin' || currentUserRole === 'Administrator') ? 'block' : 'none';
+        }
+
+        validateSessionWithServer();
         loadData();
       } else {
+        currentUser = '';
         loginOverlay.style.display = 'flex';
       }
     }
+
+    // Live session heartbeat: checks every 6 seconds if active user is still allowed
+    setInterval(() => {
+      if (currentUser && currentUser.toLowerCase() !== 'admin') {
+        validateSessionWithServer();
+      }
+    }, 6000);
 
     function switchAuthView(view) {
       const vLogin = document.getElementById('authViewLogin');
@@ -2899,6 +2988,9 @@
 
     function logoutUser() {
       localStorage.removeItem('hl_user');
+      localStorage.removeItem('hl_email');
+      localStorage.removeItem('hl_role');
+      currentUser = '';
       location.reload();
     }
 
@@ -2994,9 +3086,16 @@
           filterParam = currentUser;
         }
         const res = await fetch(`/api/data?filter_user=${encodeURIComponent(filterParam)}`);
+        if (res.status === 401) {
+          const errData = await res.json().catch(() => ({}));
+          if (errData.status === 'revoked' || errData.revoked) {
+            handleRevocation(errData.detail || "Your account access has been revoked or removed by the Administrator.");
+            return;
+          }
+        }
         appData = await res.json();
         renderAll();
-      checkEmailSettingsStatus();
+        checkEmailSettingsStatus();
       } catch (err) {
         console.error('Failed to load dashboard data:', err);
       }

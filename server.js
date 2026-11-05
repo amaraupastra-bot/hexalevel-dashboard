@@ -355,6 +355,55 @@ function formatProjectStart(str) {
   return str;
 }
 
+function getNextUserId(users) {
+  let max = 0;
+  (users || []).forEach(u => {
+    const m = (u.id || '').match(/USR-(\d+)/);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (n > max) max = n;
+    }
+  });
+  return `USR-${String(max + 1).padStart(3, '0')}`;
+}
+
+function isUserAuthorized(req, data) {
+  let u = (
+    req.headers['x-user-name'] ||
+    req.headers['x-user-email'] ||
+    ''
+  ).trim();
+
+  if (!u && req.url) {
+    try {
+      const q = url.parse(req.url, true).query;
+      u = (q.user || q.req_user || q.email || '').trim();
+    } catch (e) {}
+  }
+
+  if (!u && req._parsedBody) {
+    u = (req._parsedBody.user || req._parsedBody.current_user || req._parsedBody.email || '').trim();
+  }
+
+  u = u.toLowerCase();
+
+  if (u === 'admin' || u === 'admin@hexalevel.com') {
+    return true; // Admin is always authorized
+  }
+
+  if (!u) {
+    return true; // Default fallback for system/admin requests
+  }
+
+  const users = data.users || [];
+  const found = users.find(user =>
+    ((user.name || '').toLowerCase() === u || (user.email || '').toLowerCase() === u) &&
+    user.status === 'Active'
+  );
+
+  return Boolean(found);
+}
+
 function parseScenarioShares(scenarioStr, amt) {
   scenarioStr = scenarioStr || '';
   if (scenarioStr.includes("Scenario A")) {
@@ -791,13 +840,13 @@ async function handleRequest(req, res) {
       let user = users.find(u => (u.email || '').toLowerCase() === query || (u.name || '').toLowerCase() === query);
 
       // Master Admin fallback if not in list
-      if (!user && USERS_DB[query]) {
+      if (!user && (query === 'admin' || query === 'admin@hexalevel.com')) {
         user = {
           id: 'USR-001',
-          email: query,
-          name: USERS_DB[query].name,
-          password: USERS_DB[query].passwords[0],
-          passwords: USERS_DB[query].passwords,
+          email: 'admin@hexalevel.com',
+          name: 'Admin',
+          password: 'admin',
+          passwords: ['admin', 'admin123'],
           role: 'Administrator',
           created_at: "2026-10-31 12:00:00",
           last_login: "2026-10-31 19:00:00",
@@ -810,6 +859,10 @@ async function handleRequest(req, res) {
 
       if (!user) {
         return sendJson(res, 401, { detail: "User account not found. Please contact Admin to receive an invitation." });
+      }
+
+      if (user.status !== "Active" && user.status !== "Pending Password Setup") {
+        return sendJson(res, 401, { detail: "Your account access has been revoked or removed by the Administrator." });
       }
 
       if (user.status === "Pending Password Setup" && !user.password) {
@@ -934,6 +987,11 @@ async function handleRequest(req, res) {
       }
 
       const data = loadData();
+
+      if (!isUserAuthorized(req, data)) {
+        return sendJson(res, 401, { status: "revoked", detail: "Your account access has been revoked or removed by the Administrator." });
+      }
+
       if (!data.users) data.users = [];
 
       let user = data.users.find(u => (u.email || '').toLowerCase() === query || (u.name || '').toLowerCase() === query);
@@ -966,6 +1024,11 @@ async function handleRequest(req, res) {
       }
 
       const data = loadData();
+
+      if (!isUserAuthorized(req, data)) {
+        return sendJson(res, 401, { status: "revoked", detail: "Your account access has been revoked or removed by the Administrator." });
+      }
+
       const users = data.users || [];
 
       let user = users.find(u => (u.email || '').toLowerCase() === query || (u.name || '').toLowerCase() === query);
@@ -1031,7 +1094,7 @@ async function handleRequest(req, res) {
       const token = crypto.randomBytes(16).toString('hex');
 
       const newUser = {
-        id: `USR-${String(data.users.length + 1).padStart(3, '0')}`,
+        id: getNextUserId(data.users),
         name,
         email,
         password: "", // pending setup by user
@@ -1148,7 +1211,41 @@ async function handleRequest(req, res) {
       return sendJson(res, 200, { status: "success", deleted: target.id });
     }
 
-    // 3j. Email Settings (Get)
+    // 3j. Verify Active Session (checks if user still exists and is Active)
+    if (pathname === '/api/auth/verify-session' && method === 'GET') {
+      const queryUser = (parsedUrl.query.user || '').trim().toLowerCase();
+      const queryEmail = (parsedUrl.query.email || '').trim().toLowerCase();
+
+      // Primary Admin is always allowed
+      if (queryUser === 'admin' || queryEmail === 'admin@hexalevel.com') {
+        return sendJson(res, 200, { valid: true, user: "Admin", role: "Administrator" });
+      }
+
+      const data = loadData();
+      const users = data.users || [];
+
+      const found = users.find(u => 
+        ((u.name || '').toLowerCase() === queryUser || (u.email || '').toLowerCase() === queryEmail) &&
+        u.status === 'Active'
+      );
+
+      if (!found) {
+        return sendJson(res, 401, {
+          valid: false,
+          revoked: true,
+          detail: "Your account access has been revoked or removed by the Administrator."
+        });
+      }
+
+      return sendJson(res, 200, {
+        valid: true,
+        user: found.name,
+        email: found.email,
+        role: found.role || "Member"
+      });
+    }
+
+    // 3k. Email Settings (Get)
     if (pathname === '/api/email/settings' && method === 'GET') {
       const data = loadData();
       const s = data.email_settings || {};
@@ -1234,6 +1331,24 @@ async function handleRequest(req, res) {
     // 4. Get Dashboard Data
     if (pathname === '/api/data' && method === 'GET') {
       const filterUser = parsedUrl.query.filter_user;
+      const reqUser = (parsedUrl.query.req_user || req.headers['x-user-name'] || req.headers['x-user-email'] || '').trim().toLowerCase();
+
+      // If a non-admin user is requesting, verify they are still an active user in the database
+      if (reqUser && reqUser !== 'admin' && reqUser !== 'admin@hexalevel.com' && reqUser !== 'all') {
+        const data = loadData();
+        const users = data.users || [];
+        const active = users.find(u =>
+          ((u.name || '').toLowerCase() === reqUser || (u.email || '').toLowerCase() === reqUser) &&
+          u.status === 'Active'
+        );
+        if (!active) {
+          return sendJson(res, 401, {
+            status: "revoked",
+            detail: "Your account access has been revoked or removed by the Administrator."
+          });
+        }
+      }
+
       const dashboardData = calculateDashboardData(filterUser);
       return sendJson(res, 200, dashboardData);
     }
@@ -1242,6 +1357,10 @@ async function handleRequest(req, res) {
     if (pathname === '/api/project' && method === 'POST') {
       const p = await parseJsonBody(req);
       const data = loadData();
+
+      if (!isUserAuthorized(req, data)) {
+        return sendJson(res, 401, { status: "revoked", detail: "Your account access has been revoked or removed by the Administrator." });
+      }
       const pid = `PRJ-${String((data.projects || []).length + 1).padStart(3, '0')}`;
       const userName = p.user ? p.user.replace(/\(Co-Founder\)/g, '').replace(/\(Partner\)/g, '').trim() : "Admin";
 
@@ -1361,6 +1480,11 @@ async function handleRequest(req, res) {
       const pid = pathname.replace('/api/project/', '');
       const p = await parseJsonBody(req);
       const data = loadData();
+
+      if (!isUserAuthorized(req, data)) {
+        return sendJson(res, 401, { status: "revoked", detail: "Your account access has been revoked or removed by the Administrator." });
+      }
+
       const idx = (data.projects || []).findIndex(item => item.id === pid);
       if (idx === -1) {
         return sendJson(res, 404, { detail: "Project not found" });
@@ -1477,6 +1601,11 @@ async function handleRequest(req, res) {
       const user = parsedUrl.query.user || "Admin";
       const userName = user ? user.replace(/\(Co-Founder\)/g, '').replace(/\(Partner\)/g, '').trim() : "Admin";
       const data = loadData();
+
+      if (!isUserAuthorized(req, data)) {
+        return sendJson(res, 401, { status: "revoked", detail: "Your account access has been revoked or removed by the Administrator." });
+      }
+
       const projToDelete = (data.projects || []).find(p => p.id === pid);
       const clientName = projToDelete ? projToDelete.client : pid;
 
@@ -1495,6 +1624,11 @@ async function handleRequest(req, res) {
     if (pathname === '/api/expense' && method === 'POST') {
       const e = await parseJsonBody(req);
       const data = loadData();
+
+      if (!isUserAuthorized(req, data)) {
+        return sendJson(res, 401, { status: "revoked", detail: "Your account access has been revoked or removed by the Administrator." });
+      }
+
       const userName = e.user ? e.user.replace(/\(Co-Founder\)/g, '').replace(/\(Partner\)/g, '').trim() : "Admin";
       let eid, tabName;
       if (e.period === 'old') {
@@ -1518,6 +1652,11 @@ async function handleRequest(req, res) {
       const eid = pathname.replace('/api/expense/', '');
       const e = await parseJsonBody(req);
       const data = loadData();
+
+      if (!isUserAuthorized(req, data)) {
+        return sendJson(res, 401, { status: "revoked", detail: "Your account access has been revoked or removed by the Administrator." });
+      }
+
       const userName = e.user ? e.user.replace(/\(Co-Founder\)/g, '').replace(/\(Partner\)/g, '').trim() : "Admin";
 
       let found = false;
@@ -1554,6 +1693,10 @@ async function handleRequest(req, res) {
       const userName = user ? user.replace(/\(Co-Founder\)/g, '').replace(/\(Partner\)/g, '').trim() : "Admin";
       const data = loadData();
 
+      if (!isUserAuthorized(req, data)) {
+        return sendJson(res, 401, { status: "revoked", detail: "Your account access has been revoked or removed by the Administrator." });
+      }
+
       data.expenses_old = (data.expenses_old || []).filter(x => x.id !== eid);
       data.expenses_new = (data.expenses_new || []).filter(x => x.id !== eid);
 
@@ -1566,6 +1709,11 @@ async function handleRequest(req, res) {
     if (pathname === '/api/sendmoney' && method === 'POST') {
       const s = await parseJsonBody(req);
       const data = loadData();
+
+      if (!isUserAuthorized(req, data)) {
+        return sendJson(res, 401, { status: "revoked", detail: "Your account access has been revoked or removed by the Administrator." });
+      }
+
       const userName = s.user ? s.user.replace(/\(Co-Founder\)/g, '').replace(/\(Partner\)/g, '').trim() : "Admin";
       let sid, tabName;
       if (s.period === 'old') {
@@ -1589,6 +1737,11 @@ async function handleRequest(req, res) {
       const sid = pathname.replace('/api/sendmoney/', '');
       const s = await parseJsonBody(req);
       const data = loadData();
+
+      if (!isUserAuthorized(req, data)) {
+        return sendJson(res, 401, { status: "revoked", detail: "Your account access has been revoked or removed by the Administrator." });
+      }
+
       const userName = s.user ? s.user.replace(/\(Co-Founder\)/g, '').replace(/\(Partner\)/g, '').trim() : "Admin";
 
       let found = false;
@@ -1625,6 +1778,10 @@ async function handleRequest(req, res) {
       const userName = user ? user.replace(/\(Co-Founder\)/g, '').replace(/\(Partner\)/g, '').trim() : "Admin";
       const data = loadData();
 
+      if (!isUserAuthorized(req, data)) {
+        return sendJson(res, 401, { status: "revoked", detail: "Your account access has been revoked or removed by the Administrator." });
+      }
+
       data.send_money_old = (data.send_money_old || []).filter(x => x.id !== sid);
       data.send_money_new = (data.send_money_new || []).filter(x => x.id !== sid);
 
@@ -1640,6 +1797,11 @@ async function handleRequest(req, res) {
     if (pathname === '/api/credential' && method === 'POST') {
       const item = await parseJsonBody(req);
       const data = loadData();
+
+      if (!isUserAuthorized(req, data)) {
+        return sendJson(res, 401, { status: "revoked", detail: "Your account access has been revoked or removed by the Administrator." });
+      }
+
       if (!data.credentials) data.credentials = [];
 
       const newId = 'CRED-' + String(data.credentials.length + 1).padStart(3, '0');
@@ -1669,6 +1831,11 @@ async function handleRequest(req, res) {
       const credId = pathname.replace('/api/credential/', '');
       const updates = await parseJsonBody(req);
       const data = loadData();
+
+      if (!isUserAuthorized(req, data)) {
+        return sendJson(res, 401, { status: "revoked", detail: "Your account access has been revoked or removed by the Administrator." });
+      }
+
       if (!data.credentials) data.credentials = [];
 
       const index = data.credentials.findIndex(c => c.id === credId);
@@ -1695,6 +1862,11 @@ async function handleRequest(req, res) {
     if (pathname.startsWith('/api/credential/') && method === 'DELETE') {
       const credId = pathname.replace('/api/credential/', '');
       const data = loadData();
+
+      if (!isUserAuthorized(req, data)) {
+        return sendJson(res, 401, { status: "revoked", detail: "Your account access has been revoked or removed by the Administrator." });
+      }
+
       if (!data.credentials) data.credentials = [];
 
       const target = data.credentials.find(c => c.id === credId);
