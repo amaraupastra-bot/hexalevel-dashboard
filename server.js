@@ -14,35 +14,64 @@ const EXCEL_PATH = path.join(BASE_DIR, 'Hexalevel_Financial_Management_Dashboard
 
 const BLOB_URL = 'https://chyqewr2sbowut1m.public.blob.vercel-storage.com/dashboard_data.json';
 const BLOB_TOKEN = process.env.PUBLIC_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN;
+const SNAPSHOT_PREFIX = 'db_snapshots/db_';
 
 let memoryData = null;
 let lastBlobSync = 0;
 
 async function syncFromBlob(force = false) {
   if (!isVercel || !BLOB_TOKEN) return;
-  if (!force && memoryData && (Date.now() - lastBlobSync < 1000)) return;
+  // If modified locally within last 2 seconds in this container, preserve memory
+  if (!force && memoryData && memoryData._updatedAt && (Date.now() - memoryData._updatedAt < 2000)) {
+    return;
+  }
+  // Rate-limit sync checks to at most once per 500ms unless forced
+  if (!force && memoryData && (Date.now() - lastBlobSync < 500)) {
+    return;
+  }
+
   try {
-    const freshUrl = `${BLOB_URL}?download=1&_nocache=${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    const res = await fetch(freshUrl, {
-      cache: 'no-store',
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      }
-    });
-    if (res.ok) {
-      const remoteData = await res.json();
-      if (remoteData && remoteData.users && Array.isArray(remoteData.users)) {
-        const localVer = (memoryData && memoryData._version) || 0;
-        const remoteVer = remoteData._version || 0;
-        const recentlyModified = memoryData && memoryData._updatedAt && (Date.now() - memoryData._updatedAt < 3000);
-        if (!recentlyModified || remoteVer >= localVer) {
-          memoryData = remoteData;
-          lastBlobSync = Date.now();
-          try {
-            fs.writeFileSync(DATA_FILE, JSON.stringify(remoteData, null, 2), 'utf-8');
-          } catch (e) {}
+    const { list } = require('@vercel/blob');
+    // Direct authenticated call to Vercel Blob metadata API (bypasses CDN cache completely)
+    const listRes = await list({ prefix: SNAPSHOT_PREFIX, token: BLOB_TOKEN, limit: 10 });
+    
+    let targetUrl = null;
+    let targetVer = 0;
+
+    if (listRes && listRes.blobs && listRes.blobs.length > 0) {
+      // Sort snapshots newest first by uploadedAt
+      const sorted = listRes.blobs.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+      targetUrl = sorted[0].url;
+      const m = (sorted[0].pathname || '').match(/_v(\d+)\.json/);
+      if (m) targetVer = parseInt(m[1], 10);
+    } else {
+      // Fallback to primary URL
+      targetUrl = `${BLOB_URL}?download=1&_nocache=${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    }
+
+    if (targetUrl) {
+      const res = await fetch(targetUrl, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+      if (res.ok) {
+        const remoteData = await res.json();
+        if (remoteData && remoteData.users && Array.isArray(remoteData.users)) {
+          const localVer = (memoryData && memoryData._version) || 0;
+          const remoteVer = remoteData._version || targetVer || 0;
+          const recentlyModified = memoryData && memoryData._updatedAt && (Date.now() - memoryData._updatedAt < 2500);
+
+          if (!recentlyModified || remoteVer >= localVer) {
+            memoryData = remoteData;
+            lastBlobSync = Date.now();
+            try {
+              fs.writeFileSync(DATA_FILE, JSON.stringify(remoteData, null, 2), 'utf-8');
+            } catch (e) {}
+          }
         }
       }
     }
@@ -54,17 +83,41 @@ async function syncFromBlob(force = false) {
 async function persistToBlob(data) {
   if (!isVercel || !BLOB_TOKEN) return;
   try {
-    const { put } = require('@vercel/blob');
-    const res = await put('dashboard_data.json', JSON.stringify(data, null, 2), {
+    const { put, list, del } = require('@vercel/blob');
+    const jsonStr = JSON.stringify(data, null, 2);
+
+    // 1. Write unique immutable snapshot (IMMUNE to any CDN caching delay)
+    const snapshotName = `${SNAPSHOT_PREFIX}${Date.now()}_v${data._version || 0}.json`;
+    const snapshotRes = await put(snapshotName, jsonStr, {
+      access: 'public',
+      addRandomSuffix: false,
+      token: BLOB_TOKEN
+    });
+
+    // 2. Also overwrite legacy dashboard_data.json for backwards compatibility
+    await put('dashboard_data.json', jsonStr, {
       access: 'public',
       addRandomSuffix: false,
       allowOverwrite: true,
       token: BLOB_TOKEN,
       cacheControlMaxAge: 0
     });
+
     memoryData = data;
     lastBlobSync = Date.now();
-    console.log('✅ Successfully persisted to Vercel Blob (v' + (data._version || 0) + '):', res.url);
+    console.log(`✅ Successfully persisted to Vercel Blob (v${data._version || 0}) snapshot:`, snapshotRes.url);
+
+    // 3. Clean up older snapshots asynchronously (keep latest 5)
+    list({ prefix: SNAPSHOT_PREFIX, token: BLOB_TOKEN }).then(listRes => {
+      if (listRes && listRes.blobs && listRes.blobs.length > 5) {
+        const sorted = listRes.blobs.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+        const toDelete = sorted.slice(5).map(b => b.url);
+        if (toDelete.length > 0) {
+          del(toDelete, { token: BLOB_TOKEN }).catch(() => {});
+        }
+      }
+    }).catch(() => {});
+
   } catch (err) {
     console.error('❌ Error persisting to Vercel Blob:', err.message);
   }
@@ -742,7 +795,10 @@ function sendJson(res, statusCode, data) {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': '*'
+    'Access-Control-Allow-Headers': '*',
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+    'Pragma': 'no-cache',
+    'Expires': '0'
   });
   res.end(JSON.stringify(data));
 }
