@@ -841,21 +841,38 @@
       ],
       "role": "Administrator",
       "created_at": "2026-10-31 12:00:00",
-      "last_login": "2026-11-05 16:35:48",
-      "login_count": 4,
+      "last_login": "2026-11-06 05:32:27",
+      "login_count": 7,
       "status": "Active"
     },
     {
       "id": "USR-002",
       "name": "Amara",
       "email": "ammarachaudhary986@gmail.com",
-      "password": "",
-      "passwords": [],
-      "created_at": "2026-11-05 16:42:39",
-      "last_login": "—",
-      "login_count": 0,
-      "status": "Pending Password Setup",
-      "invite_token": "c99244a0df4fea27ddf227807dac466e",
+      "password": "Amara@986",
+      "passwords": [
+        "Amara@986"
+      ],
+      "created_at": "2026-11-06 05:40:08",
+      "last_login": "2026-11-06 05:40:59",
+      "login_count": 1,
+      "status": "Active",
+      "invite_token": "51497a14b2ce50b7e6a81f6be300264f",
+      "role": "Member"
+    },
+    {
+      "id": "USR-003",
+      "name": "Urooj",
+      "email": "itsurooj10@gmail.com",
+      "password": "hexalevel009.",
+      "passwords": [
+        "hexalevel009."
+      ],
+      "created_at": "2026-11-06 05:41:47",
+      "last_login": "2026-11-06 05:45:00",
+      "login_count": 2,
+      "status": "Active",
+      "invite_token": "042328c48d15df249c3b6d75d0546e74",
       "role": "Member"
     }
   ],
@@ -1050,6 +1067,6 @@
     "smtp_secure": true,
     "base_url": "https://hexalevel.vercel.app"
   },
-  "_version": 15,
-  "_updatedAt": 1793898772892
+  "_version": 16,
+  "_updatedAt": 1793981737634
 }

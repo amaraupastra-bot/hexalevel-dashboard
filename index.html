@@ -8,6 +8,25 @@
   <link rel="icon" type="image/png" sizes="192x192" href="/favicon.png">
   <link rel="apple-touch-icon" href="/favicon.png">
   <link rel="shortcut icon" href="/favicon.ico">
+  <!-- ZERO-FLICKER AUTH PRE-CHECK: Synchronously blocks any unauthenticated dashboard rendering at Frame 0 -->
+  <script>
+    (function() {
+      try {
+        var u = localStorage.getItem('hl_user');
+        var p = new URLSearchParams(window.location.search);
+        var isInvite = p.get('action') === 'set-password';
+        if (!u || isInvite) {
+          document.documentElement.classList.add('hl-unauth');
+          document.documentElement.classList.remove('hl-auth');
+        } else {
+          document.documentElement.classList.add('hl-auth');
+          document.documentElement.classList.remove('hl-unauth');
+        }
+      } catch (e) {
+        document.documentElement.classList.add('hl-unauth');
+      }
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- Premium Modern Typography: Inter + Outfit -->
@@ -15,6 +34,25 @@
   <!-- Chart.js for interactive graphs -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
+    /* Strict Zero-Flicker Pre-render Guards: Prevents any unauthenticated dashboard paint */
+    html.hl-unauth body > aside.sidebar,
+    html.hl-unauth body > main.main-content,
+    html.hl-unauth body > #mobileHeader,
+    html.hl-unauth #sidebarBackdrop,
+    html.hl-unauth .app-container {
+      display: none !important;
+      visibility: hidden !important;
+    }
+    html.hl-unauth #loginScreen {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+    html.hl-auth #loginScreen {
+      display: none !important;
+      visibility: hidden !important;
+    }
+
     :root {
       --primary-teal: #0d5c52;
       --primary-dark: #073831;
@@ -2697,6 +2735,9 @@
       localStorage.removeItem('hl_role');
       currentUser = '';
       
+      document.documentElement.classList.remove('hl-auth');
+      document.documentElement.classList.add('hl-unauth');
+
       // Close all open modals
       document.querySelectorAll('.modal-backdrop, .modal, [id$="Modal"]').forEach(el => {
         if (el.style) el.style.display = 'none';
@@ -2735,6 +2776,23 @@
 
     // AUTHENTICATION LOGIC
     function checkAuth() {
+      // Priority 1: Check if visitor clicked an invitation link in their email
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('action') === 'set-password') {
+        currentUser = '';
+        document.documentElement.classList.remove('hl-auth');
+        document.documentElement.classList.add('hl-unauth');
+        const loginOverlay = document.getElementById('loginScreen');
+        if (loginOverlay) loginOverlay.style.display = 'flex';
+        switchAuthView('set-password');
+        const email = params.get('email');
+        if (email) {
+          const emailInput = document.getElementById('setPassEmail');
+          if (emailInput) emailInput.value = email;
+        }
+        return;
+      }
+
       const saved = localStorage.getItem('hl_user');
       const savedRole = localStorage.getItem('hl_role');
       const loginOverlay = document.getElementById('loginScreen');
@@ -2744,7 +2802,10 @@
         document.getElementById('currentUserName').innerText = '👤 ' + currentUser;
         const mBadge = document.getElementById('mobileUserBadge');
         if (mBadge) mBadge.innerText = '👤 ' + currentUser;
-        loginOverlay.style.display = 'none';
+        
+        document.documentElement.classList.remove('hl-unauth');
+        document.documentElement.classList.add('hl-auth');
+        if (loginOverlay) loginOverlay.style.display = 'none';
 
         // Restrict Users Management tab to Administrator only
         const usersMenuItem = document.getElementById('menuItemUsers');
@@ -2756,7 +2817,9 @@
         loadData();
       } else {
         currentUser = '';
-        loginOverlay.style.display = 'flex';
+        document.documentElement.classList.remove('hl-auth');
+        document.documentElement.classList.add('hl-unauth');
+        if (loginOverlay) loginOverlay.style.display = 'flex';
       }
     }
 
@@ -2795,9 +2858,11 @@
           localStorage.setItem('hl_user', currentUser);
           localStorage.setItem('hl_email', data.email || email);
           localStorage.setItem('hl_role', currentUserRole);
+          document.documentElement.classList.remove('hl-unauth');
+          document.documentElement.classList.add('hl-auth');
           document.getElementById('currentUserName').innerText = '👤 ' + currentUser;
-      const mBadge = document.getElementById('mobileUserBadge');
-      if (mBadge) mBadge.innerText = '👤 ' + currentUser;
+          const mBadge = document.getElementById('mobileUserBadge');
+          if (mBadge) mBadge.innerText = '👤 ' + currentUser;
           document.getElementById('loginScreen').style.display = 'none';
 
           // Restrict Users Management tab to Administrator only
@@ -2991,6 +3056,10 @@
       localStorage.removeItem('hl_email');
       localStorage.removeItem('hl_role');
       currentUser = '';
+      document.documentElement.classList.remove('hl-auth');
+      document.documentElement.classList.add('hl-unauth');
+      const loginOverlay = document.getElementById('loginScreen');
+      if (loginOverlay) loginOverlay.style.display = 'flex';
       location.reload();
     }
 
@@ -3085,7 +3154,7 @@
         } else {
           filterParam = currentUser;
         }
-        const res = await fetch(`/api/data?filter_user=${encodeURIComponent(filterParam)}&_t=${Date.now()}`);
+        const res = await fetch(`/api/data?filter_user=${encodeURIComponent(filterParam)}&req_user=${encodeURIComponent(currentUser || '')}&_t=${Date.now()}`);
         if (res.status === 401) {
           const errData = await res.json().catch(() => ({}));
           if (errData.status === 'revoked' || errData.revoked) {
@@ -4719,6 +4788,11 @@
         const action = params.get('action');
         const email = params.get('email');
         if (action === 'set-password' && email) {
+          currentUser = '';
+          document.documentElement.classList.remove('hl-auth');
+          document.documentElement.classList.add('hl-unauth');
+          const loginOverlay = document.getElementById('loginScreen');
+          if (loginOverlay) loginOverlay.style.display = 'flex';
           switchAuthView('set-password');
           const emailInput = document.getElementById('setPassEmail');
           if (emailInput) emailInput.value = email;
